@@ -1,8 +1,8 @@
-############################################
-#   theradcolor custom kernel build script #
-############################################
+##############################################
+#   theradcolor custom kernel build script   #
+##############################################
 
-# Set defaults
+# Set defaults directory's
 wd=$(pwd)
 out=$wd/out
 ANYKERNEL_DIR=${HOME}/anykernel2
@@ -30,14 +30,17 @@ export KBUILD_BUILD_USER=theradcolor
 export KBUILDar_BUILD_HOST=UBUNTU
 
 # Compiler String
+
+# Export Arm64 from the given directory
 export CROSS_COMPILE=/home/theradcolor/toolchain/bin/aarch64-linux-android-
+# Export Arm from the given directory
 export CROSS_COMPILE_ARM32=/home/theradcolor/toolchainX32/bin/arm-eabi-
 
 # Make and Clean
 make O=$out clean
 make O=$out mrproper
 
-# Make whyred_defconfig
+# Make your device device_defconfig
 make O=$out ARCH=arm64 device_defconfig
 
 # Build Kernel
@@ -60,7 +63,6 @@ cd ${ANYKERNEL_DIR}
 rm *.zip
 
 # Copy thhe image.gz-dtb to anykernel2 directory
-
 cp $out/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
 
 #Build a flashable zip Device using anykernel2
