@@ -1,0 +1,4 @@
+samples/build-kernel-clang
+samples/build-kernel-gcc
+personal/kernel
+personal/testbuild
