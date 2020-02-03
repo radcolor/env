@@ -17,6 +17,10 @@ echo -e "*****************************************************"
 # Set kernel source workspace
 cd $BUILD
 
+# Use ccache
+export USE_CCACHE=1
+export CCACHE_DIR="/home/theradcolor/.ccache"
+
 # Export ARCH <arm, arm64, x86, x86_64>
 export ARCH=arm64
 # Export SUBARCH <arm, arm64, x86, x86_64>
