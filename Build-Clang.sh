@@ -32,7 +32,7 @@ export KBUILD_BUILD_USER=theradcolor
 export KBUILD_BUILD_HOST=ILLYRIA
 
 # Compiler String
-CC=/home/theradcolor/kernel/linux-x86/clang-r353983c/bin/clang
+CC="${ccache} /home/theradcolor/clang/bin/clang"
 export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 
 # Make and Clean
@@ -44,9 +44,10 @@ make O=$out ARCH=arm64 device_defconfig
 
 # Build Kernel
 make O=$out ARCH=arm64 \
-CC=home/theradcolor/kernel/linux-x86/clang-r353983c/bin/clang \
+CC="${ccache} /home/theradcolor/clang/bin/clang" \
 CLANG_TRIPLE=aarch64-linux-gnu- \
-CROSS_COMPILE=/home/theradcolor/kernel/... \
+CROSS_COMPILE=/home/theradcolor/kernel/...
+CROSS_COMPILE_ARM#@=/home/theradcolor/kernel/... \
 -j9
 
 
