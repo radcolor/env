@@ -7,14 +7,30 @@
 wd=$(pwd)
 out="/home/theradcolor/whyred/out/"
 BUILD="/home/theradcolor/whyred/kernel/"
-ANYKERNEL_DIR_EAS="/home/shashank/whyred/anykernel-eas/"
-ANYKERNEL_DIR_HMP="/home/shashank/whyred/anykernel-hmp/"
+ANYKERNEL_DIR_EAS="/home/theradcolor/whyred/anykernel-eas/"
+ANYKERNEL_DIR_HMP="/home/theradcolor/whyred/anykernel-hmp/"
 IMG="/home/theradcolor/whyred/out/arch/arm64/boot/Image.gz-dtb"
 DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
 red='\033[0;31m'
 green='\e[0;32m'
+white='\033[0m'
+
+#Checkout build dir.
+cd $BUILD
+
+#Export build type
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ $BRANCH == "kernel-hmp" ]; then
+    export TYPE=hmp
+elif [ $BRANCH == "kernel-eas" ]; then
+    export TYPE=eas
+elif [ $BRANCH == "kernel-eas-oc" ]; then
+    export TYPE=eas
+elif [ $BRANCH == "kernel-fakerad" ]; then
+    export TYPE=eas
+fi
 
 #Export compiler dir.
 CLANG_TRIPLE=aarch64-linux-gnu-
@@ -41,7 +57,6 @@ export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(htt
 
 function build_clang()
 {
-    cd $BUILD
     make O=$out clean
     make O=$out mrproper
     rm -rf $out/arch/arm64/boot
@@ -56,10 +71,37 @@ function build_clang()
     if [ -f $IMG ]; then
         BUILD_END=$(date +"%s")
         DIFF=$(($BUILD_END - $BUILD_START))
-        echo -e $green "<< Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds. >>"
-	else
-		echo -e $red "<< Build failed, please fix the errors first bish! >>"
+        echo -e $green"Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."$green
+        flash_zip
+    else
+		echo -e $red"Build failed, please fix the errors first bish!"$red
 	fi
+}
+
+function flash_zip()
+{
+    echo -e $green"Now making a flashable zip of kernel with AnyKernel3"$white
+
+    if [ $TYPE == "hmp" ]; then
+        cd $ANYKERNEL_DIR_HMP
+        export AK3_DIR="/home/theradcolor/whyred/anykernel-hmp/"
+    elif [ $TYPE == "eas" ]; then
+        cd $ANYKERNEL_DIR_EAS
+        export AK3_DIR="/home/theradcolor/whyred/anykernel-eas/"
+    else 
+        cd $ANYKERNEL_DIR_EAS
+        export AK3_DIR="/home/theradcolor/whyred/anykernel-eas/"
+    fi
+
+    export ZIPNAME=rad-$TYPE-whyred.zip
+
+    #Cleanup and copy Image.gz-dtb to dir.
+    rm -f *.zip
+    rm -f Image.gz-dtb
+    cp $out/arch/arm64/boot/Image.gz-dtb ${AK3_DIR}/
+
+    #Build a flashable zip
+    zip -r9 $ZIPNAME * -x README.md .git
 }
 
 build_clang
