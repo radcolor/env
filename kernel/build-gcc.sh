@@ -1,13 +1,13 @@
-##############################################
-#   theradcolor custom kernel build script   #
-##############################################
+###########################
+#   Kernel Build Script   #
+###########################
 
 # Set defaults directory's
 wd=$(pwd)
 out=$wd/out
 ANYKERNEL_DIR=${HOME}/anykernel2
 BUILD="/home/theradcolor/kernel/"
-DATE=$(date +"%m-%d-%y")
+DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
 echo -e "*****************************************************"
@@ -27,7 +27,7 @@ export ARCH=arm64
 export SUBARCH=arm64
 
 # Set kernal name
-export LOCALVERSION=theradcolor
+export LOCALVERSION=v1
 # Export Username
 export KBUILD_BUILD_USER=theradcolor
 # Export Machine name

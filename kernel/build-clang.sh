@@ -1,14 +1,13 @@
-#####################
-#    theradcolor    #
-#####################
+#############################
+#    Kernel Build Script    #
+#############################
 
 # Set defaults
 wd=$(pwd)
 out=$wd/out
 BUILD="/home/theradcolor/kernel/source"
 ANYKERNEL_DIR=${HOME}/anykernel2
-BUILD="/home/theradcolor/kernel/"
-DATE=$(date +"%m-%d-%y")
+DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
 echo -e "*****************************************************"
@@ -27,7 +26,7 @@ export ARCH=arm64
 export SUBARCH=arm64
 
 # Set kernal configurations
-export LOCALVERSION=-x1
+export LOCALVERSION=-v1
 export KBUILD_BUILD_USER=theradcolor
 export KBUILD_BUILD_HOST=ILLYRIA
 
@@ -47,7 +46,7 @@ make O=$out ARCH=arm64 \
 CC="${ccache} /home/theradcolor/clang/bin/clang" \
 CLANG_TRIPLE=aarch64-linux-gnu- \
 CROSS_COMPILE=/home/theradcolor/kernel/...
-CROSS_COMPILE_ARM#@=/home/theradcolor/kernel/... \
+CROSS_COMPILE_ARM32=/home/theradcolor/kernel/... \
 -j9
 
 
