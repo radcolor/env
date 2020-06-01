@@ -100,7 +100,8 @@ function flash_zip()
         export AK3_DIR="/home/theradcolor/whyred/anykernel-eas/"
     fi
 
-    export ZIPNAME=rad-$TYPE-whyred.zip
+    check_camera
+    export ZIPNAME=rad-$TYPE-$CAM_TYPE-whyred.zip
 
     #Cleanup and copy Image.gz-dtb to dir.
     rm -f *.zip
@@ -109,6 +110,16 @@ function flash_zip()
 
     #Build a flashable zip
     zip -r9 $ZIPNAME * -x README.md .git
+}
+
+function check_camera()
+{
+    CAMERA="$(grep 'BLOBS' $BUILD/arch/arm64/configs/whyred-perf_defconfig)"
+    if [ $CAMERA == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
+            CAM_TYPE="newcam"
+        elif [ $CAMERA == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
+            CAM_TYPE="oldcam"
+    fi
 }
 
 build_clang
