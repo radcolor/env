@@ -13,6 +13,7 @@ IMG="/home/theradcolor/whyred/out/arch/arm64/boot/Image.gz-dtb"
 DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
+#Define colors
 red='\033[0;31m'
 green='\e[0;32m'
 white='\033[0m'
@@ -27,9 +28,9 @@ if [ $BRANCH == "kernel-hmp" ]; then
 elif [ $BRANCH == "kernel-eas" ]; then
     export TYPE=eas
 elif [ $BRANCH == "kernel-eas-oc" ]; then
-    export TYPE=eas
+    export TYPE=eas-oc
 elif [ $BRANCH == "kernel-fakerad" ]; then
-    export TYPE=eas
+    export TYPE=fakerad
 fi
 
 #Export compiler dir.
@@ -66,7 +67,7 @@ function build_clang()
     CROSS_COMPILE="${GCC64}" \
     CROSS_COMPILE_ARM32="${GCC32}" \
     CLANG_TRIPLE="${CLANG_TRIPLE}" \
-    -j6
+    -j6  2>&1| tee $out/kernel.log
     
     if [ -f $IMG ]; then
         BUILD_END=$(date +"%s")
@@ -86,6 +87,12 @@ function flash_zip()
         cd $ANYKERNEL_DIR_HMP
         export AK3_DIR="/home/theradcolor/whyred/anykernel-hmp/"
     elif [ $TYPE == "eas" ]; then
+        cd $ANYKERNEL_DIR_EAS
+        export AK3_DIR="/home/theradcolor/whyred/anykernel-eas/"
+    elif [ $TYPE == "eas-oc" ]; then
+        cd $ANYKERNEL_DIR_EAS
+        export AK3_DIR="/home/theradcolor/whyred/anykernel-eas/"
+    elif [ $TYPE == "fakerad" ]; then
         cd $ANYKERNEL_DIR_EAS
         export AK3_DIR="/home/theradcolor/whyred/anykernel-eas/"
     else 
