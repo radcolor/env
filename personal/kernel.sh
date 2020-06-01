@@ -33,31 +33,36 @@ elif [ $BRANCH == "kernel-fakerad" ]; then
     export TYPE=fakerad
 fi
 
-#Export compiler dir.
-CLANG_TRIPLE=aarch64-linux-gnu-
-GCC64=/home/theradcolor/whyred/compilers/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-GCC32=/home/theradcolor/whyred/compilers/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+function set_param()
+{
+    #Export compiler dir.
+    CLANG_TRIPLE=aarch64-linux-gnu-
+    GCC64=/home/theradcolor/whyred/compilers/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+    GCC32=/home/theradcolor/whyred/compilers/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
+    
+    #Export ARCH <arm, arm64, x86, x86_64>
+    export ARCH=arm64
+    #Export SUBARCH <arm, arm64, x86, x86_64>
+    export SUBARCH=arm64
+    
+    #CCACHE parameters
+    ccache=$(which ccache)
+    export USE_CCACHE=1
+    export CCACHE_DIR="/home/theradcolor/.ccache"
+    
+    #kbuild host and user
+    export KBUILD_BUILD_USER="shashank"
+    export KBUILD_BUILD_HOST="manjaro-linux"
+    
+    #Compiler String
+    CC="${ccache} /home/theradcolor/whyred/compilers/clang-r383902/bin/clang"
+    export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+}
 
-#Export ARCH <arm, arm64, x86, x86_64>
-export ARCH=arm64
-#Export SUBARCH <arm, arm64, x86, x86_64>
-export SUBARCH=arm64
-
-#CCACHE parameters
-ccache=$(which ccache)
-export USE_CCACHE=1
-export CCACHE_DIR="/home/theradcolor/.ccache"
-
-#kbuild host and user
-export KBUILD_BUILD_USER="shashank"
-export KBUILD_BUILD_HOST="manjaro-linux"
-
-#Compiler String
-CC="${ccache} /home/theradcolor/whyred/compilers/clang-r383902/bin/clang"
-export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 
 function build_clang()
 {
+    set_param
     make O=$out clean
     make O=$out mrproper
     rm -rf $out/arch/arm64/boot
@@ -119,6 +124,26 @@ function check_camera()
             CAM_TYPE="newcam"
         elif [ $CAMERA == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
             CAM_TYPE="oldcam"
+    fi
+}
+
+function change_camera()
+{
+    check_camera
+    if [ $CAM_TYPE == "newcam" ]; then
+        PATCH="CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n"
+    elif [ $CAM_TYPE == "oldcam" ]; then
+        PATCH="CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y"
+    fi
+    
+    #Change the compability
+    sed -i 's/'"$CAMERA"/"$PATCH"'/g' $BUILD/arch/arm64/configs/whyred-perf_defconfig
+    
+    AFTER_PATCH="$(grep 'BLOBS' $BUILD/arch/arm64/configs/whyred-perf_defconfig)"
+    if [ $AFTER_PATCH == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
+        echo -e $green"Changed compability for NEW camera blobs!"$white
+    elif [ $AFTER_PATCH == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
+        echo -e $green"Changed compability for OLD camera blobs!"$white
     fi
 }
 
