@@ -12,6 +12,9 @@ IMG="/home/theradcolor/whyred/out/arch/arm64/boot/Image.gz-dtb"
 DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
+chat_id="-1001485415302."
+token=""
+
 #Define colors
 red='\033[0;31m'
 green='\e[0;32m'
@@ -99,6 +102,7 @@ function flash_zip()
 
     #Build a flashable zip
     zip -r9 $ZIPNAME * -x README.md .git
+    tg_push
 }
 
 function check_camera()
@@ -129,6 +133,14 @@ function change_camera()
     elif [ $AFTER_PATCH == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
         echo -e $green"Changed compability for OLD camera blobs!"$white
     fi
+}
+
+function tg_push() {
+	ZIP=$ANYKERNEL_DIR/$(echo rad*.zip)
+	curl -F document=@$ZIP "https://api.telegram.org/bot$token/sendDocument" \
+			-F chat_id="$chat_id" \
+			-F "disable_web_page_preview=true" \
+			-F "parse_mode=html"
 }
 
 build_clang
