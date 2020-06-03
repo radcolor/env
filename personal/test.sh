@@ -102,7 +102,6 @@ function flash_zip()
 
     #Build a flashable zip
     zip -r9 $ZIPNAME * -x README.md .git
-    tg_push
 }
 
 function check_camera()
