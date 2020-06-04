@@ -31,6 +31,8 @@ elif [ $BRANCH == "kernel-eas-oc" ]; then
     export TYPE=eas-oc
 elif [ $BRANCH == "kernel-fakerad" ]; then
     export TYPE=fakerad
+elif [ $BRANCH == "staging" ]; then
+    export TYPE=staging
 fi
 
 function set_param()
