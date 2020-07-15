@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# To download git and install it
+
+TAG=2.27.0
+
+aria2c https://www.kernel.org/pub/software/scm/git/git-${TAG}.tar.xz
+tar -xf git-${TAG}.tar.xz
+cd git-${TAG} || exit
+
+make configure
+./configure --prefix=/usr/local
+sudo make install -j"$(nproc)"
+
+cd .. || exit
+sudo rm -rf git-${TAG}
+sudo rm -rf git-${TAG}.tar.xz
+
+git --version
