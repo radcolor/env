@@ -12,14 +12,19 @@ ANYKERNEL_DIR=${HOME}/anykernel2
 DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
+# Define colors
+green='\e[0;32m'
+white='\033[0m'
+
 echo -e "*****************************************************"
 echo "                      Compile kernel                    "
 echo -e "*****************************************************"
 
 # Set kernel source workspace
-cd $BUILD
+cd ${BUILD} || exit
 
 # Use ccache
+ccache=$(which ccache)
 export USE_CCACHE=1
 export CCACHE_DIR="/home/theradcolor/.ccache"
 
@@ -33,43 +38,45 @@ export KBUILD_BUILD_USER=theradcolor
 export KBUILD_BUILD_HOST=ILLYRIA
 
 # Compiler String
+CLANG_TRIPLE=aarch64-linux-gnu-
+GCC64=/home/theradcolor/whyred/compilers/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+GCC32=/home/theradcolor/whyred/compilers/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
 CC="${ccache} /home/theradcolor/clang/bin/clang"
-export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+export KBUILD_COMPILER_STRING
 
 # Make and Clean
-make O=$out clean
-make O=$out mrproper
+make O="$out" clean
+make O="$out" mrproper
 
 # Make <defconfig>
-make O=$out ARCH=arm64 device_defconfig
+make O="$out" ARCH=arm64 device_defconfig
 
 # Build Kernel
-make O=$out ARCH=arm64 \
-CC="${ccache} /home/theradcolor/clang/bin/clang" \
-CLANG_TRIPLE=aarch64-linux-gnu- \
-CROSS_COMPILE=/home/theradcolor/kernel/...
-CROSS_COMPILE_ARM32=/home/theradcolor/kernel/... \
--j9
-
+make O="$out" CC="${CC}" \
+    CROSS_COMPILE="${GCC64}" \
+    CROSS_COMPILE_ARM32="${GCC32}" \
+    CLANG_TRIPLE="${CLANG_TRIPLE}" \
+    -j6  2>&1| tee "$out"/kernel.log
 
 BUILD_END=$(date +"%s")
-DIFF=$(($BUILD_END - $BUILD_START))
-echo -e "$Yellow Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds.$nocol"
+DIFF=$("$BUILD_END" - "$BUILD_START")
+echo -e "$green" "Build completed in $($DIFF / 60) minute(s) and $($DIFF % 60) seconds." "$white"
 
 echo -e "Making Flashable Template using anykernel2"
 
 # Clean anykernel2 directory
-rm -f ${ANYKERNEL_DIR}/Image.gz*
-rm -f ${ANYKERNEL_DIR}/zImage*
-rm -f ${ANYKERNEL_DIR}/dtb*
+rm -f "$ANYKERNEL_DIR"/Image.gz*
+rm -f "$ANYKERNEL_DIR"/zImage*
+rm -f "$ANYKERNEL_DIR"/dtb*
 
 # Change the directory to anykernel2 directory
-cd ${ANYKERNEL_DIR}
+cd "$ANYKERNEL_DIR" || exit
 #remove all zips
-rm *.zip
+rm ./*.zip
 
 # Copy thhe image.gz-dtb to anykernel2 directory
-cp $out/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
+cp "$out"/arch/arm64/boot/Image.gz-dtb "$ANYKERNEL_DIR"/
 
 #Build a flashable zip Device using anykernel2
-zip -r9 kernel-$DATE.zip * -x README kernel-$DATE.zip#!/bin/bash
+zip -r9 kernel-"$DATE".zip ./* -x README .git
