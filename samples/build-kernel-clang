@@ -1,17 +1,19 @@
-###########################
-#   Kernel Build Script   #
-###########################
+#!/usr/bin/env bash
 
-# Set defaults directory's
+#############################
+#    Kernel Build Script    #
+#############################
+
+# Set defaults
 wd=$(pwd)
 out=$wd/out
+BUILD="/home/theradcolor/kernel/source"
 ANYKERNEL_DIR=${HOME}/anykernel2
-BUILD="/home/theradcolor/kernel/"
 DATE=$(date +"%d-%m-%y")
 BUILD_START=$(date +"%s")
 
 echo -e "*****************************************************"
-echo "              Compiling  kernel using GCC               "
+echo "                      Compile kernel                    "
 echo -e "*****************************************************"
 
 # Set kernel source workspace
@@ -23,32 +25,32 @@ export CCACHE_DIR="/home/theradcolor/.ccache"
 
 # Export ARCH <arm, arm64, x86, x86_64>
 export ARCH=arm64
-# Export SUBARCH <arm, arm64, x86, x86_64>
 export SUBARCH=arm64
 
-# Set kernal name
-export LOCALVERSION=v1
-# Export Username
+# Set kernal configurations
+export LOCALVERSION=-v1
 export KBUILD_BUILD_USER=theradcolor
-# Export Machine name
-export KBUILDar_BUILD_HOST=UBUNTU
+export KBUILD_BUILD_HOST=ILLYRIA
 
 # Compiler String
-
-# Export Arm64 from the given directory
-export CROSS_COMPILE=/home/theradcolor/toolchain/bin/aarch64-linux-android-
-# Export Arm from the given directory
-export CROSS_COMPILE_ARM32=/home/theradcolor/toolchainX32/bin/arm-eabi-
+CC="${ccache} /home/theradcolor/clang/bin/clang"
+export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 
 # Make and Clean
 make O=$out clean
 make O=$out mrproper
 
-# Make your device device_defconfig
+# Make <defconfig>
 make O=$out ARCH=arm64 device_defconfig
 
 # Build Kernel
-make O=$out ARCH=arm64 -j4
+make O=$out ARCH=arm64 \
+CC="${ccache} /home/theradcolor/clang/bin/clang" \
+CLANG_TRIPLE=aarch64-linux-gnu- \
+CROSS_COMPILE=/home/theradcolor/kernel/...
+CROSS_COMPILE_ARM32=/home/theradcolor/kernel/... \
+-j9
+
 
 BUILD_END=$(date +"%s")
 DIFF=$(($BUILD_END - $BUILD_START))
@@ -70,4 +72,4 @@ rm *.zip
 cp $out/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
 
 #Build a flashable zip Device using anykernel2
-zip -r9 kernel-$DATE.zip * -x README kernel-$DATE.zip
+zip -r9 kernel-$DATE.zip * -x README kernel-$DATE.zip#!/bin/bash
