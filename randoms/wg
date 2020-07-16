@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Copyright (C) 2020 Shashank Baghel
+# To fetch latest WireGuard and add them into kernel tree
+
+CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+KERNEL_DIR="/home/theradcolor/whyred/kernel" # Configure kernel directory here
+USER_AGENT="WireGuard-AndroidROMBuild/0.3 ($(uname -a))"
+WIREGUARD_URL="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat"
+
+while read -r distro package version _; do
+	if [[ $distro == upstream && $package == linuxcompat ]]; then
+		VERSION="$version"
+		break
+	fi
+done < <(curl -A "${USER_AGENT}" -LSs --connect-timeout 30 https://build.wireguard.com/distros.txt)
+
+if [ ! -f "wireguard-linux-compat-"${VERSION}".tar.xz" ]; then
+    aria2c "${WIREGUARD_URL}"-"${VERSION}".tar.xz 
+fi
+
+if [ ! -d "${KERNEL_DIR}"/net/wireguard ]; then
+    mkdir "${KERNEL_DIR}/net/wireguard"
+    tar -C "${KERNEL_DIR}/net/wireguard" -xf wireguard-linux-compat-"${VERSION}".tar.xz --strip-components=2 "wireguard-linux-compat-"${VERSION}"/src"
+    cd "${KERNEL_DIR}" || exit
+	git add .
+	git commit -S -s -m "net: Import WireGuard v"${VERSION}" from "${WIREGUARD_URL}""
+	curl https://github.com/theradcolor/android_kernel_xiaomi_whyred/commit/c5ba946f6a2c7ba64989c425db6abf67d83a7797.patch | git am
+fi
+
+cd "${CURRENT_DIR}" || exit
+rm -rf wireguard-linux-compat-"${VERSION}".tar.xz
