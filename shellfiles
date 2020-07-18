@@ -1,5 +1,8 @@
-samples/build-kernel-clang
-samples/build-kernel-gcc
+envsetup/arch
+envsetup/git
 personal/kernel
 personal/testbuild
-setup/git
+personal/manjaro
+randoms/wg
+samples/build-kernel-clang
+samples/build-kernel-gcc

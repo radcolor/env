@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# Distro setup script for various development enviroment for arch and its derivative(manajro)
+
+# Clear the screen
+clear
+
+echo "Setting up your Arch Linux! It can take a while depending on your bandwidth"
+
+echo "Running full system upgrade..."
+sudo pacman -Syyu
+
+echo "Installing dependencies..."
+sudo pacman -S base-devel make wget multilib-devel gcc cmake clang \
+               automake zip curl aria2 bzip2 android-udev adb android-tools
+
+
+echo "Setting up git..."
+sudo pacman -S git
+
+echo "Setting up git credentials..."
+git config --global user.name "Shashank Baghel"
+git config --global user.email "theradcolor@gmail.com"
+
+echo "Successfully updated git name to $(git config --get user.name) and email to $(git config --get user.email)"
+
+echo "Setting up ccache..."
+sudo pacman -S ccache
+ccache -M 20G

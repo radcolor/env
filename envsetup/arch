@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Distro setup script for various development enviroment for arch and its derivative(manajro)
+
+# Clear the screen
+clear
+
+echo "Setting up your Arch Linux! It can take a while depending on your bandwidth"
+
+echo "Running full system upgrade..."
+sudo pacman -Syyu
+
+echo "Installing dependencies..."
+sudo pacman -S base-devel make wget multilib-devel gcc cmake clang \
+               automake zip curl aria2 bzip2 android-udev adb android-tools
+
+
+echo "Setting up git..."
+sudo pacman -S git
+
+echo "Setting up git credentials..."
+
+GIT_NAME="$(git config --get user.name)"
+GIT_EMAIL="$(git config --get user.email)"
+
+if [ ! -z "${GIT_NAME}" ]; then
+    echo -n "Please enter your name: "
+    read -r NAME
+    git config --global user.name "${NAME}"
+fi
+if [ ! -z "${GIT_EMAIL}" ]; then
+    echo -n "Please enter your email: "
+    read -r EMAIL
+    git config --global user.email "${EMAIL}"
+fi
+echo "Successfully updated git name to $(git config --get user.name) and email to $(git config --get user.email)"
+
+echo "Setting up ccache..."
+sudo pacman -S ccache
+echo "Please enter ccache max size limit(Default 5G): "
+read -r CCACHE_MAX_SIZE
+ccache -M "${CCACHE_MAX_SIZE}"
