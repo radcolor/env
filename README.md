@@ -1,6 +1,8 @@
 ## Scripts
 
-Some scripts to automate the works, feel free to use.
+[![Build Status](https://img.shields.io/github/workflow/status/theradcolor/lazyscripts/ShellCheck%20scripts?style=for-the-badge)](https://github.com/theradcolor/lazyscripts/actions?query=workflow)
+
+Shell scripts for Unix/Linux to automate the works, feel free to use.
 
 ## To setup 
 
@@ -12,8 +14,10 @@ git clone https://github.com/theradcolor/scripts.git
 ```
 ## Some Informations
 
-- kernel - stuffs related for kernel building.
+- envsetup - stuffs related to setup build enviroment and distro.
 
-- personal - some personal works related script .
+- personal - some personal works related script.
 
-- setup - stuffs related to setup build enviroment and distro.
+- randoms - some misc stuffs.
+
+- samples - some more misc scripts and stuffs.
