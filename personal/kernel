@@ -4,18 +4,18 @@
 # Personal kernel build script for https://github.com/theradcolor/android_kernel_xiaomi_whyred
 # That will build four varient of kernel i.e 2-2(oldcam & newcam) varient of EAS and HMP
 
-# Set enviroment and vaiables
-out="/home/theradcolor/whyred/out/"
-BUILD="/home/theradcolor/whyred/kernel/"
-ANYKERNEL_DIR="/home/theradcolor/whyred/anykernel/"
-IMG="/home/theradcolor/whyred/out/arch/arm64/boot/Image.gz-dtb"
-BUILD_START=$(date +"%s")
+# Set enviroment and vaiables to avoid hardcoding them
+out="/home/theradcolor/whyred/out/"                             # Kernel build output directory
+BUILD="/home/theradcolor/whyred/kernel/"                        # Kernel source directory
+ANYKERNEL_DIR="/home/theradcolor/whyred/anykernel/"             # AnyKernel source directory
+IMG="/home/theradcolor/whyred/out/arch/arm64/boot/Image.gz-dtb" # Image with appended dtb output directory
 
 # Define colors
 red='\033[0;31m'
 green='\e[0;32m'
 white='\033[0m'
 
+# Clear screen
 clear
 
 function checkout_source()
@@ -26,6 +26,7 @@ function checkout_source()
 
 function type()
 {
+    checkout_source
     # Export build type
     BRANCH="$(git rev-parse --abbrev-ref HEAD)"
     if [ "${BRANCH}" == "kernel-hmp" ]; then
@@ -34,10 +35,33 @@ function type()
        export TYPE=eas
     elif [ "${BRANCH}" == "staging" ]; then
        export TYPE=staging
+    else
+        export TYPE="${BRANCH}"
     fi
 }
 
-function set_param()
+function set_param_gcc()
+{
+    #Export compiler dir.
+    export CROSS_COMPILE="/home/theradcolor/aarch64-linux-gnu/bin/aarch64-linux-gnu-"
+    export CROSS_COMPILE_ARM32="/home/theradcolor/arm-linux-gnueabi/bin/arm-linux-gnueabi-"
+
+    #Export ARCH <arm, arm64, x86, x86_64>
+    export ARCH=arm64
+    #Export SUBARCH <arm, arm64, x86, x86_64>
+    export SUBARCH=arm64
+    
+    #CCACHE parameters
+    ccache=$(which ccache)
+    export USE_CCACHE=1
+    export CCACHE_DIR="/home/theradcolor/.ccache"
+    
+    #kbuild host and user
+    export KBUILD_BUILD_USER="shashank"
+    export KBUILD_BUILD_HOST="manjaro"
+}
+
+function set_param_clang()
 {
     # Export compiler dir.
     CLANG_TRIPLE=aarch64-linux-gnu-
@@ -63,16 +87,38 @@ function set_param()
     export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 }
 
-
-function build_clang()
+function build_gcc()
 {
     checkout_source
-    set_param
+    set_param_gcc
     make O="${out}" clean
     make O="${out}" mrproper
     rm -rf "${out}"/arch/arm64/boot
     make O="${out}" "${CONFIG}"
 
+    BUILD_START=$(date +"%s")
+    make O="${out}" -j6 2>&1| tee "${out}"/kernel.log
+    
+    if [ -f "${IMG}" ]; then
+        BUILD_END=$(date +"%s")
+        DIFF=$("${BUILD_END}" - "${BUILD_START}")
+        echo -e "${green}" "Build completed in $($DIFF / 60) minute(s) and $($DIFF % 60) seconds." "${green}"
+        flash_zip
+    else
+		echo -e "${red}" "Build failed, please fix the errors first bish!" "${red}"
+	fi
+}
+
+function build_clang()
+{
+    checkout_source
+    set_param_clang
+    make O="${out}" clean
+    make O="${out}" mrproper
+    rm -rf "${out}"/arch/arm64/boot
+    make O="${out}" "${CONFIG}"
+
+    BUILD_START=$(date +"%s")
     make O="${out}" CC="${CC}" \
     CROSS_COMPILE="${GCC64}" \
     CROSS_COMPILE_ARM32="${GCC32}" \
@@ -105,11 +151,14 @@ function flash_zip()
 
     # Build a flashable zip
     zip -r9 "${ZIPNAME}" ./* -x README.md .git
+
+    # Copy our zip to externel directory
+    cp ./*.zip "/home/theradcolor/whyred/"
 }
 
 function check_camera()
 {
-    CAMERA="$(grep 'BLOBS' $BUILD/arch/arm64/configs/"${CONFIG}")"
+    CAMERA="$(grep 'BLOBS' ${BUILD}/arch/arm64/configs/"${CONFIG}")"
     if [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
             CAM_TYPE="newcam"
         elif [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
@@ -120,42 +169,41 @@ function check_camera()
 # Execution
 
 # Checkout to HMP branch
+clear
 checkout_source
 type
 if [ "${TYPE}" != "hmp" ]; then
        git checkout kernel-hmp
 fi
-clear
 
 # HMP oldcam
 CONFIG=whyred_defconfig # Configuration for oldcam
 type
 check_camera
-echo -e "${green}" "Building $TYPE for $CAM_TYPE with Clang" "${white}"
-build_clang # build_clang or build_gcc
+echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
+build_gcc # build_clang or build_gcc
 
 # HMP newcam
 CONFIG=whyred-newcam_defconfig # Configuration for newcam
 type
 check_camera
-echo -e "${green}" "Building $TYPE for $CAM_TYPE with Clang" "${white}"
-build_clang # build_clang or build_gcc
+echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
+build_gcc # build_clang or build_gcc
 
 # Checkout to EAS branch
 checkout_source
 git checkout kernel-eas
-clear
 
 # EAS oldcam
 CONFIG=whyred_defconfig # Configuration for oldcam
 type
 check_camera
-echo -e "${green}" "Building $TYPE for $CAM_TYPE with Clang" "${white}"
-build_clang # build_clang or build_gcc
+echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
+build_gcc # build_clang or build_gcc
 
 # EAS newcam
 CONFIG=whyred-newcam_defconfig # Configuration for newcam
 type
 check_camera
-echo -e "${green}" "Building $TYPE for $CAM_TYPE with Clang" "${white}"
-build_clang # build_clang or build_gcc
+echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
+build_gcc # build_clang or build_gcc
