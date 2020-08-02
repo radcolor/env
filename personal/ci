@@ -22,7 +22,7 @@ white='\033[0m'
 
 function clone()
 {
-    git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b master
+    git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ak-cci
     git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc
     git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gcc32
     mkdir clang
