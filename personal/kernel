@@ -142,6 +142,15 @@ function flash_zip()
     type
     check_camera
     cd "${ANYKERNEL_DIR}" || exit
+    
+    if [ "${TYPE}" == "hmp" ]; then
+        git checkout ak-hmp
+    elif [ "${TYPE}" == "eas" ]; then
+        git checkout ak-eas
+    else
+        git checkout ak-cci
+    fi
+    
     export ZIPNAME=rad-"${TYPE}"-"${CAM_TYPE}"-whyred.zip
 
     # Cleanup and copy Image.gz-dtb to dir.
@@ -161,7 +170,7 @@ function check_camera()
     CAMERA="$(grep 'BLOBS' ${BUILD}/arch/arm64/configs/"${CONFIG}")"
     if [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
             CAM_TYPE="newcam"
-        elif [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
+    elif [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
             CAM_TYPE="oldcam"
     fi
 }
