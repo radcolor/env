@@ -22,14 +22,8 @@ white='\033[0m'
 
 function clone()
 {
+    git clone --depth=1 --quiet https://github.com/theradcolor/clang
     git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ak-cci
-    git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc
-    git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gcc32
-    mkdir clang
-    cd clang || exit
-    wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r383902.tar.gz 
-    tar -xzf clang*
-    cd .. || exit
 }
 
 function checkout_source()
@@ -38,7 +32,7 @@ function checkout_source()
     cd "${KERNEL_DIR}"
 }
 
-function set_param()
+function set_param_clang()
 {
     # Export ARCH <arm, arm64, x86, x86_64>
     export ARCH=arm64
@@ -54,22 +48,26 @@ function set_param()
     export KBUILD_BUILD_HOST="CircleCI"
     export KBUILD_JOBS="$((`grep -c '^processor' /proc/cpuinfo` * 2))"
 
+    # Compiler
+    GCC32=$wd/clang/bin/arm-linux-gnueabi-
+    GCC64=$wd/clang/bin/aarch64-linux-gnu-
+    GCC64_TYPE=aarch64-linux-gnu-
+
     # Compiler String
-    CC="${ccache} $wd/clang/bin/clang"
-    COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+    CLANG=$wd/clang/bin/clang
+    COMPILER_STRING="$(${CLANG} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
 }
 
-function build()
+function build_clang()
 {
-    make O="$out" clean
     make O="$out" mrproper
     rm -rf "$out"/arch/arm64/boot
     make O="$out" $config
 
     BUILD_START=$(date +"%s")
 
-    make -j"${KBUILD_JOBS}" O=$out ARCH=arm64 CC=$wd"/clang/bin/clang" CLANG_TRIPLE="aarch64-linux-gnu-" CROSS_COMPILE=$wd"/gcc/bin/aarch64-linux-android-" CROSS_COMPILE_ARM32=$wd"/gcc32/bin/arm-linux-androideabi-"  2>&1| tee $out/build.log
+    make -j"${KBUILD_JOBS}" O=$out CC="${CLANG}" AR="llvm-ar" NM="llvm-nm" OBJCOPY="llvm-objcopy" OBJDUMP="llvm-objdump" STRIP="llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}"  2>&1| tee $out/build.log
 
     if [ -f "${IMG}" ]; then
         BUILD_END=$(date +"%s")
@@ -158,21 +156,16 @@ clone
 # Checkout to source
 checkout_source
 # Configure enviroments
-set_param
+set_param_clang
 # Push build message to telegram
 tg_inform
-
 # Start Build
-build
-
+build_clang
 # Change defconfig
 config="whyred-newcam_defconfig"
-
 # Checkout Source
 checkout_source
-
 # Start Build with newcam
-build
-
+build_clang
 # Push all the logs to telegram
 tg_push_log
