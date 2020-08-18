@@ -10,7 +10,6 @@ KERNEL_DIR=$wd
 ANYKERNEL_DIR=$wd"/AnyKernel3"
 IMG=$out"/arch/arm64/boot/Image.gz-dtb"
 DATE="`date +%d%m%Y-%H%M%S`"
-config="whyred_defconfig"
 grp_chat_id="-1001375712567"
 chat_id="-1001487815579"
 token="123:xyz"
@@ -156,16 +155,14 @@ clone
 # Checkout to source
 checkout_source
 # Configure enviroments
+if [[ "$@" =~ "newcam" ]]; then
+	config="whyred-newcam_defconfig"
+else
+	config="whyred_defconfig"
+fi
+echo $config
 set_param_clang
 # Push build message to telegram
 tg_inform
 # Start Build
 build_clang
-# Change defconfig
-config="whyred-newcam_defconfig"
-# Checkout Source
-checkout_source
-# Start Build with newcam
-build_clang
-# Push all the logs to telegram
-tg_push_log
