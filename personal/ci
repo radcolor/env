@@ -155,14 +155,13 @@ clone
 # Checkout to source
 checkout_source
 # Configure enviroments
-if [[ "$@" =~ "newcam" ]]; then
-	config="whyred-newcam_defconfig"
-else
-	config="whyred_defconfig"
-fi
-echo $config
 set_param_clang
-# Push build message to telegram
-tg_inform
+if [[ "$@" =~ "newcam" ]]; then
+    config="whyred-newcam_defconfig"
+else
+    config="whyred_defconfig"
+    # Push build message to telegram
+    tg_inform
+fi
 # Start Build
 build_clang
