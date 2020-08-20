@@ -68,12 +68,14 @@ function build_clang()
 
     make -j"${KBUILD_JOBS}" O=$out CC="${CLANG}" AR="llvm-ar" NM="llvm-nm" OBJCOPY="llvm-objcopy" OBJDUMP="llvm-objdump" STRIP="llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}"  2>&1| tee $out/build.log
 
+    BUILD_END=$(date +"%s")
+    DIFF=$(($BUILD_END - $BUILD_START))
+
     if [ -f "${IMG}" ]; then
-        BUILD_END=$(date +"%s")
-        DIFF=$(($BUILD_END - $BUILD_START))
-        echo -e $green"Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."$green
+        echo -e $green"Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."$green
         flash_zip
     else
+        tg_push_error
 		echo -e $red"Build failed, please fix the errors first bish!"$red
 	fi
 }
@@ -84,13 +86,13 @@ function flash_zip()
 
     check_build_type
     check_camera
-    export ZIPNAME=CI-testbuild-$TYPE-$CAM_TYPE-$DATE.zip
+    export ZIPNAME=rad-ci-$TYPE-$CAM_TYPE-$DATE.zip
 
     # Checkout anykernel3 dir
     cd "$ANYKERNEL_DIR"
 
      # Cleanup and copy Image.gz-dtb to dir.
-    rm -f CI*.zip
+    rm -f rad-ci*.zip
     rm -f Image.gz-dtb
 
     # Copy Image.gz-dtb to dir.
@@ -127,17 +129,22 @@ function check_build_type()
 
 function tg_inform()
 {
-	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>New CI build has been triggered"'!'"</b>%0A<b>Kernel Version · </b> <code>Linux · $(make kernelversion)</code>%0A<b>GIT Branch · </b> <code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit Head · </b> <code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler · </b> <code>${COMPILER_STRING}</code>%0A<b>Started on · </b> <code>$(TZ=Asia/Kolkata date)</code>%0A"
+	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux Version · </b><code>$(make kernelversion)</code>%0A<b>Git branch · </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head · </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler · </b><code>${COMPILER_STRING}</code>%0A<b>At · </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
 }
 
 function tg_push()
 {
-	ZIP="${ANYKERNEL_DIR}"/$(echo CI-testbuild-*.zip)
+	ZIP="${ANYKERNEL_DIR}"/$(echo rad-ci-*.zip)
 	curl -F document=@"${ZIP}" "https://api.telegram.org/bot$token/sendDocument" \
 			-F chat_id="$chat_id" \
 			-F "disable_web_page_preview=true" \
 			-F "parse_mode=html" \
-            -F caption="Builded in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
+            -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
+}
+
+function tg_push_error()
+{
+	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>❌ Build failed after $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s).</b>"
 }
 
 function tg_push_log()
@@ -147,7 +154,7 @@ function tg_push_log()
 			-F chat_id="$grp_chat_id" \
 			-F "disable_web_page_preview=true" \
 			-F "parse_mode=html" \
-            -F caption="Builded in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s). @theradcolor"
+            -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s). @theradcolor"
 }
 
 # Clone the toolchains
