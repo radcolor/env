@@ -38,10 +38,6 @@ function set_param_clang()
     #Export SUBARCH <arm, arm64, x86, x86_64>
     export SUBARCH=arm64
 
-    # CCACHE parameters
-    ccache=$(which ccache)
-    export USE_CCACHE=1
-
     # Kbuild host and user
     export KBUILD_BUILD_USER="shashank"
     export KBUILD_BUILD_HOST="CircleCI"
@@ -100,7 +96,7 @@ function flash_zip()
 
     # Build a flashable zip
     zip -r9 $ZIPNAME * -x README.md .git
-    MD5=$(md5sum rad-ci-*.zip)
+    MD5=$(md5sum rad-ci-*.zip | cut -d' ' -f1)
     tg_push
 }
 
@@ -130,7 +126,7 @@ function check_build_type()
 
 function tg_inform()
 {
-	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux Version · </b><code>$(make kernelversion)</code>%0A<b>Git branch · </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head · </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler · </b><code>${COMPILER_STRING}</code>%0A<b>At · </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
+	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux Version • </b><code>$(make kernelversion)</code>%0A<b>Git branch • </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head • </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler • </b><code>${COMPILER_STRING}</code>%0A<b>At • </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
 }
 
 function tg_push()
@@ -140,7 +136,7 @@ function tg_push()
 			-F chat_id="$chat_id" \
 			-F "disable_web_page_preview=true" \
 			-F "parse_mode=html" \
-            -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) | MD5SUM · ${MD5}"
+            -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) | <b>MD5 checksum</b> • <code>${MD5}</code>"
 }
 
 function tg_push_error()
@@ -173,3 +169,5 @@ else
 fi
 # Start Build
 build_clang
+# Post build logs
+tg_push_log
