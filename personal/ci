@@ -50,7 +50,7 @@ function set_param_clang()
 
     # Compiler String
     CLANG=$wd/clang/bin/clang
-    COMPILER_STRING="$(${CLANG} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+    COMPILER_STRING="$(${CLANG} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' | sed 's/ *$//')"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
 }
 
@@ -86,8 +86,10 @@ function flash_zip()
 
     # Checkout anykernel3 dir
     cd "$ANYKERNEL_DIR"
+    # Patch anykernel3
+    patch_anykernel
 
-     # Cleanup and copy Image.gz-dtb to dir.
+    # Cleanup and copy Image.gz-dtb to dir.
     rm -f rad-ci*.zip
     rm -f Image.gz-dtb
 
@@ -117,8 +119,10 @@ function check_build_type()
         export TYPE=hmp
     elif [ $BRANCH == "kernel-eas" ]; then
         export TYPE=eas
-    elif [ $BRANCH == "staging" ]; then
-        export TYPE=staging
+    elif [ $BRANCH == "staging-hmp" ]; then
+        export TYPE=staging-hmp
+    elif [ $BRANCH == "staging-eas" ]; then
+        export TYPE=staging-eas
     else
         export TYPE=$BRANCH
     fi
@@ -154,6 +158,28 @@ function tg_push_log()
             -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s). @theradcolor"
 }
 
+function patch_anykernel()
+{
+    if [ $TYPE == "eas" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-eas.patch | git am
+        rm -rf *.patch
+    elif [ $TYPE == "hmp" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-hmp.patch | git am
+        rm -rf *.patch
+    elif [ $TYPE == "staging-eas" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-eas.patch | git am
+        rm -rf *.patch
+    elif [ $TYPE == "staging-hmp" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-hmp.patch | git am
+        rm -rf *.patch
+    else
+        echo "Type not mentioned, skipping patches!"
+    fi
+}
+
+# Configure git
+git config --global user.name "Shashank Baghel"
+git config --global user.email "theradcolor@gmail.com"
 # Clone the toolchains
 clone
 # Checkout to source

@@ -50,7 +50,7 @@ function set_param_clang()
 
     # Compiler String
     CLANG=$wd/clang/bin/clang
-    COMPILER_STRING="$(${CLANG} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+    COMPILER_STRING="$(${CLANG} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' | sed 's/ *$//')"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
 }
 
@@ -86,8 +86,9 @@ function flash_zip()
 
     # Checkout anykernel3 dir
     cd "$ANYKERNEL_DIR"
+    patch_anykernel
 
-     # Cleanup and copy Image.gz-dtb to dir.
+    # Cleanup and copy Image.gz-dtb to dir.
     rm -f fakerad-ci*.zip
     rm -f Image.gz-dtb
 
@@ -113,12 +114,10 @@ function check_camera()
 function check_build_type()
 {
     BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    if [ $BRANCH == "kernel-hmp" ]; then
-        export TYPE=hmp
-    elif [ $BRANCH == "kernel-eas" ]; then
+    if [ $BRANCH == "kernel-eas" ]; then
         export TYPE=eas
-    elif [ $BRANCH == "staging" ]; then
-        export TYPE=staging
+    elif [ $BRANCH == "staging-eas" ]; then
+        export TYPE=staging-eas
     else
         export TYPE=$BRANCH
     fi
@@ -126,7 +125,7 @@ function check_build_type()
 
 function tg_inform()
 {
-	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux Version • </b><code>$(make kernelversion)</code>%0A<b>Git branch • </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head • </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler • </b><code>${COMPILER_STRING}</code>%0A<b>At • </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
+	curl -s -X POST https://api.telegram.org/bot$token/sendMessage?chat_id=$chat_id -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux Version • </b><code>$(make kernelversion)</code>%0A<b>Git branch • </b><code>$(git rev-parse --abbrev-ref HEAD)</code> <b>#fakerad</b>%0A<b>Commit head • </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler • </b><code>${COMPILER_STRING}</code>%0A<b>At • </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
 }
 
 function tg_push()
@@ -154,6 +153,22 @@ function tg_push_log()
             -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s). @theradcolor"
 }
 
+function patch_anykernel()
+{
+    if [ $TYPE == "eas" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-fakerad.patch | git am
+        rm -rf *.patch
+    elif [ $TYPE == "staging-eas" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-fakerad.patch | git am
+        rm -rf *.patch
+    else
+        echo "Type not mentioned, skipping patches!"
+    fi
+}
+
+# Configure git
+git config --global user.name "Shashank Baghel"
+git config --global user.email "theradcolor@gmail.com"
 # Clone the toolchains
 clone
 # Checkout to source
