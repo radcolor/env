@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# To compile and install mainline kernel on my machine running on arch
+
+SOURCE="/home/arch/linux"
+
+cd ${SOURCE}
+
+make clean && make mrproper
+
+make arch_defconfig
+
+make -j$(nproc --all)
+
+sudo make modules_install
+
+# sudo cp -v arch/x86_64/boot/bzImage /boot/vmlinuz-linuz-${kernel}
+
+# sudo cp ${preset}.preset /etc/mkinitcpio.d/${kernel}.preset
+
+# sudo mkinitcpio -p ${kernel}
+
+# sudo cp System.map /boot/System.map-${kernel}
+# sudo ln -sf /boot/System.map-${kernel} /boot/System.map
+
+# sudo grub-mkconfig -o /boot/grub/grub.cfg
