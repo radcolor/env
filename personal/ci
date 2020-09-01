@@ -21,7 +21,7 @@ white='\033[0m'
 
 function clone()
 {
-    git clone --depth=1 --quiet https://github.com/theradcolor/clang
+    git clone --depth=1 --quiet https://github.com/kdrag0n/proton-clang clang
     git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ak-cci
 }
 
