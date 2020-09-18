@@ -45,6 +45,7 @@ function set_param_clang()
 
     # Compiler String
     CLANG=$wd/clang/bin/clang
+    CLANG_DIR=$wd/clang
     COMPILER_STRING="$(${CLANG} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' | sed 's/ *$//')"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
 }
@@ -57,7 +58,7 @@ function build_clang()
 
     BUILD_START=$(date +"%s")
 
-    make -j"${KBUILD_JOBS}" O=$out CC="${CLANG}" AR="llvm-ar" NM="llvm-nm" OBJCOPY="llvm-objcopy" OBJDUMP="llvm-objdump" STRIP="llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}"  2>&1| tee $out/build.log
+    make -j"${KBUILD_JOBS}" O=$out CC="${CLANG}" LLVM_AR="${CLANG_DIR}/bin/llvm-ar" LLVM_NM="${CLANG_DIR}/bin/llvm-nm" LD="${CLANG_DIR}/bin/ld.lld" OBJCOPY="${CLANG_DIR}/bin/llvm-objcopy" OBJDUMP="${CLANG_DIR}/bin/llvm-objdump" STRIP="${CLANG_DIR}/bin/llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}" 2>&1| tee $out/build.log
 
     BUILD_END=$(date +"%s")
     DIFF=$(($BUILD_END - $BUILD_START))
