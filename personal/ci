@@ -14,11 +14,6 @@ grp_chat_id="-1001375712567"
 chat_id="-1001487815579"
 token="123:xyz"
 
-# Define colors
-red='\033[0;31m'
-green='\e[0;32m'
-white='\033[0m'
-
 function clone()
 {
     git clone --depth=1 --quiet https://github.com/kdrag0n/proton-clang clang
@@ -68,17 +63,17 @@ function build_clang()
     DIFF=$(($BUILD_END - $BUILD_START))
 
     if [ -f "${IMG}" ]; then
-        echo -e $green"Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."$green
+        echo -e "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
         flash_zip
     else
         tg_push_error
-		echo -e $red"Build failed, please fix the errors first bish!"$red
+		echo -e "Build failed, please fix the errors first bish!"
 	fi
 }
 
 function flash_zip()
 {
-    echo -e $green"Now making a flashable zip of kernel with AnyKernel3"$white
+    echo -e "Now making a flashable zip of kernel with AnyKernel3"
 
     check_build_type
     check_camera
