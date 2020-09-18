@@ -93,14 +93,16 @@ function build_gcc()
     make O="${out}" "${config}"
 
     BUILD_START=$(date +"%s")
-    make O="${out}" -j6 2>&1| tee "${out}"/kernel.log
+    make O="${out}" -j"${KBUILD_JOBS}" 2>&1| tee "${out}"/build.log
     
+    BUILD_END=$(date +"%s")
+    DIFF=$(($BUILD_END - $BUILD_START))
+
     if [ -f "${IMG}" ]; then
-        BUILD_END=$(date +"%s")
-        DIFF=$("${BUILD_END}" - "${BUILD_START}")
-        echo -e "Build completed in $($DIFF / 60) minute(s) and $($DIFF % 60) seconds."
+        echo -e "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
         flash_zip
     else
+        tg_push_error
 		echo -e "Build failed, please fix the errors first bish!"
 	fi
 }
@@ -193,7 +195,7 @@ function tg_inform()
 function tg_push()
 {
     ZIP="${ANYKERNEL_DIR}"/$(echo rad-ci-*.zip)
-    curl -F document=@"${ZIP}" "https://api.telegram.org/bot$token/sendDocument" \
+    curl -F document=@"${ZIP}" "https://api.telegram.org/bot${token}/sendDocument" \
 			-F chat_id="$chat_id" \
 			-F "disable_web_page_preview=true" \
 			-F "parse_mode=html" \
@@ -243,7 +245,7 @@ else
     config="whyred_defconfig"
 fi
 # Start Build (build_clang or build_gcc)
-# build_clang
-build_gcc
+build_clang
+# build_gcc
 # Post build logs
 tg_push_log
