@@ -82,10 +82,10 @@ function set_param_clang()
 function build_gcc()
 {
     clone_gcc
-    # Push build message to telegram
-    tg_inform
     checkout_source
     set_param_gcc
+    # Push build message to telegram
+    tg_inform
 
     make O="${out}" clean
     make O="${out}" mrproper
@@ -108,10 +108,10 @@ function build_gcc()
 function build_clang()
 {
     clone_clang
-    # Push build message to telegram
-    tg_inform
     checkout_source
     set_param_clang
+    # Push build message to telegram
+    tg_inform
 
     make O="$out" mrproper
     rm -rf "$out"/arch/arm64/boot
