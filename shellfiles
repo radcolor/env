@@ -1,8 +1,7 @@
 envsetup/arch
 envsetup/git
-personal/kernel
-personal/testbuild
-personal/manjaro
-randoms/wg
+envsetup/manjaro
+kernel/kernel
+kernel/wg
 samples/build-kernel-clang
 samples/build-kernel-gcc

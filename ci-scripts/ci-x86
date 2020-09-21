@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Copyright (C) 2020 Shashank Baghel
+# To compile and install mainline/stable kernel for my machine running on arch
+
+# Set enviroment and vaiables
+DATE="`date +%d%m%Y-%H%M%S`"
+WD=$(pwd)
+K_DIR=${WD}
+K_VERSION=$(make -s kernelrelease)
+PACKAGE_NAME="RAD-"${K_VERSION}-${DATE}.tar.zst
+TOKEN="123:xyz"
+CHAT_ID="-1001375712567"
+CHANNEL_ID="-1001487815579"
+
+function envsetup()
+{
+    # Kbuild host and user
+    export KBUILD_BUILD_USER="shashank"
+    export KBUILD_BUILD_HOST="archlinux"
+
+    export KBUILD_JOBS="$((`grep -c '^processor' /proc/cpuinfo` * 2))"
+}
+
+function build()
+{
+    # Cleanup dir.
+    make clean && make mrproper
+
+    # Make config
+    make arch_defconfig
+
+    # Make kernel
+    make -j"${KBUILD_JOBS}"
+}
+
+function package()
+{
+    tar -c --use-compress-program=zstd -f "${PACKAGE_NAME}" ${WD}/${K_VERSION}"-RAD"
+}
+
+envsetup
+build
