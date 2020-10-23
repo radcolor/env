@@ -269,6 +269,10 @@ function check_build_type()
         export TYPE=staging-hmp
     elif [ ${BRANCH} == "staging-eas" ]; then
         export TYPE=staging-eas
+    elif [ ${BRANCH} == "staging-a11" ]; then
+        export TYPE=staging-eas-a11
+        rm -rf AnyKernel3
+        git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ak-a11
     else
         export TYPE=${BRANCH}
     fi
