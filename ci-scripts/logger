@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function send_kernel_logs()
+{
+    LOG=${KERNEL_DIR}/build.log
+	curl -F document=@"${LOG}" "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+		-F chat_id="${GRP_CHAT_ID}" \
+		-F "disable_web_page_preview=true" \
+		-F "parse_mode=html" \
+        -F caption="Build logs for ${TYPE}-${CAM_TYPE}. @theradcolor"
+
+}
+
+function do_echo()
+{
+    echo "ECHO"
+}
+
+$1

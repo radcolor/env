@@ -391,4 +391,4 @@ else
 fi
 
 # Post build logs
-tg_push_log
+# tg_push_log
