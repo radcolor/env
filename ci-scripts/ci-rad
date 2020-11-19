@@ -45,8 +45,8 @@ function clone_aosp_clang()
 
 function clone_gcc()
 {
-    git clone --depth=1 --quiet https://github.com/theradcolor/arm-linux-gnueabi -b stable-gcc gcc32
-    git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-linux-gnu -b stable-gcc gcc64
+    git clone --depth=1 --quiet https://github.com/theradcolor/arm-linux-gnueabi -b master gcc32
+    git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-linux-gnu -b master gcc64
 }
 
 function clone_etc()
