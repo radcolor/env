@@ -237,7 +237,7 @@ function flash_zip()
     # Checkout anykernel3 dir
     cd "$ANYKERNEL_DIR"
     # Patch anykernel3
-    patch_anykernel
+    #patch_anykernel
 
     # Copy Image.gz-dtb to dir.
     cp ${OUT}/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
