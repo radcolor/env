@@ -50,9 +50,9 @@ function clone_gcc()
     git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-linux-gnu -b master gcc64
 }
 
-function clone_etc()
+function clone_anykernel()
 {
-    git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ak-cci
+    git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ${AK_CLONE_BRANCH}
 }
 
 function checkout_source()
@@ -230,7 +230,9 @@ function flash_zip()
 {
     echo "Now making a flashable zip of kernel with AnyKernel3"
 
-    check_build_type
+    check_kernel_type
+    # Clone AnyKernel3 based on EAS/HMP
+    clone_anykernel
     check_camera
     export ZIPNAME=fakerad-ci-${TYPE}-${CAM_TYPE}-${DATE}.zip
 
@@ -258,23 +260,20 @@ function check_camera()
     fi
 }
 
-function check_build_type()
+function check_kernel_type()
 {
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    if [ ${BRANCH} == "kernel-hmp" ]; then
+    KERNEL_TYPE="$(grep 'LOCALVERSION=' ${KERNEL_DIR}/arch/arm64/configs/${CONFIG})"
+    KERNEL_TYPE=`echo "${KERNEL_TYPE}" | cut -d'"' -f 2`
+    if [[ ${KERNEL_TYPE} == *"-rad-v"* ]]; then
         export TYPE=hmp
-    elif [ ${BRANCH} == "kernel-eas" ]; then
+        export AK_CLONE_BRANCH=ak-hmp
+    elif [[ ${KERNEL_TYPE} == *"-rad-x"* ]]; then
         export TYPE=eas
-    elif [ ${BRANCH} == "staging-hmp" ]; then
-        export TYPE=staging-hmp
-    elif [ ${BRANCH} == "staging-eas" ]; then
-        export TYPE=staging-eas
-    elif [ ${BRANCH} == "staging-a11" ]; then
-        export TYPE=staging-eas-a11
-        rm -rf AnyKernel3
-        git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ak-a11
-    else
-        export TYPE=${BRANCH}
+        export AK_CLONE_BRANCH=ak-eas
+    elif [[ ${KERNEL_TYPE} == *"-fakerad"* ]]; then
+        export TYPE=eas
+        export KERNEL_TYPE=fakerad
+        export AK_CLONE_BRANCH=ak-eas
     fi
 }
 
@@ -357,9 +356,6 @@ case $i in
     ;;
 esac
 done
-
-# Clone misc stuffs
-clone_etc
 
 # Start Build (build_clang/build_aosp_clang/build_proton_clang/build_gcc)
 if [ ${COMPILER} == "gnu-gcc" ]; then
