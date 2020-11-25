@@ -237,8 +237,12 @@ function flash_zip()
 
     # Checkout anykernel3 dir
     cd "${ANYKERNEL_DIR}"
+    
     # Patch anykernel3
     #patch_anykernel
+
+    # Patch anykernel3 string
+    patch_anykernel_string
 
     # Copy Image.gz-dtb to dir.
     cp ${OUT}/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
@@ -265,9 +269,11 @@ function check_kernel_type()
     KERNEL_TYPE=`echo "${KERNEL_TYPE}" | cut -d'"' -f 2`
     if [[ ${KERNEL_TYPE} == *"-rad-v"* ]]; then
         export TYPE=hmp
+        export KERNEL_TYPE=rad
         export AK_CLONE_BRANCH=ak-hmp
     elif [[ ${KERNEL_TYPE} == *"-rad-x"* ]]; then
         export TYPE=eas
+        export KERNEL_TYPE=rad
         export AK_CLONE_BRANCH=ak-eas
     elif [[ ${KERNEL_TYPE} == *"-fakerad"* ]]; then
         export TYPE=eas
@@ -331,6 +337,19 @@ function patch_anykernel()
         rm -rf *.patch
     else
         echo "Type not mentioned, skipping patches!"
+    fi
+}
+
+function patch_anykernel_string()
+{
+    # Append "(CI)" to the kernel output logs of anykernel based on type.
+    AK_UPDATER_BINARY=${ANYKERNEL_DIR}"/META-INF/com/google/android/update-binary"
+    if [ ${KERNEL_TYPE} == "fakerad" ]; then
+       sed -i s/"RAD KERNEL"/"FAKERAD KERNEL (CI)"/g ${AK_UPDATER_BINARY}
+    elif [ ${KERNEL_TYPE} == "rad" ]; then
+       sed -i s/"RAD KERNEL"/"RAD KERNEL (CI)"/g ${AK_UPDATER_BINARY}
+    else
+        echo "Kernel type is not defined, skipping anykernel string patch!"
     fi
 }
 
