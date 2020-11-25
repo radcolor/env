@@ -286,7 +286,7 @@ function check_kernel_type()
 function tg_inform()
 {
     if [ ${CONFIG} == "whyred_defconfig" ]; then
-        curl -s -X POST https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHANNEL_ID} -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux Version • </b><code>$(make kernelversion)</code>%0A<b>Git branch • </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head • </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler • </b><code>$(${TC} --version | head -n 1)</code>%0A<b>At • </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
+        curl -s -X POST https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHANNEL_ID} -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux version tag • </b><code>v$(make kernelversion)</code>%0A<b>Git branch • </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head • </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler • </b><code>$(${TC} --version | head -n 1)</code>%0A<b>At • </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
     fi
 }
 
