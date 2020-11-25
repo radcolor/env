@@ -46,8 +46,8 @@ function clone_aosp_clang()
 
 function clone_gcc()
 {
-    git clone --depth=1 --quiet https://github.com/theradcolor/arm-linux-gnueabi -b master gcc32
-    git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-linux-gnu -b master gcc64
+    git clone --depth=1 --quiet https://github.com/theradcolor/arm-linux-gnueabi -b ${GCC_BRANCH} gcc32
+    git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-linux-gnu -b ${GCC_BRANCH} gcc64
 }
 
 function clone_anykernel()
@@ -355,6 +355,14 @@ do
 case $i in
     --gcc)
     COMPILER="gnu-gcc"
+    shift
+    ;;
+    --gcc-stable)
+    GCC_BRANCH="stable-gcc"
+    shift
+    ;;
+    --gcc-master)
+    GCC_BRANCH="master"
     shift
     ;;
     --clang)
