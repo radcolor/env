@@ -17,3 +17,4 @@ sudo rm -rf git-${TAG}
 sudo rm -rf git-${TAG}.tar.xz
 
 git --version
+echo

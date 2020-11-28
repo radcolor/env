@@ -17,29 +17,29 @@ while read -r distro package version _; do
 done < <(curl -A "${USER_AGENT}" -LSs --connect-timeout 30 https://build.wireguard.com/distros.txt)
 
 if [ ! -f "wireguard-linux-compat-${VERSION}.tar.xz" ]; then
-    aria2c "${WIREGUARD_URL}"-"${VERSION}".tar.xz 
+	aria2c "${WIREGUARD_URL}"-"${VERSION}".tar.xz
 fi
 
 if [ ! -d "${KERNEL_DIR}"/net/wireguard ]; then
 
-    mkdir "${KERNEL_DIR}/net/wireguard"
-    tar -C "${KERNEL_DIR}/net/wireguard" -xf wireguard-linux-compat-"${VERSION}".tar.xz --strip-components=2 "wireguard-linux-compat-${VERSION}/src"
+	mkdir "${KERNEL_DIR}/net/wireguard"
+	tar -C "${KERNEL_DIR}/net/wireguard" -xf wireguard-linux-compat-"${VERSION}".tar.xz --strip-components=2 "wireguard-linux-compat-${VERSION}/src"
 	git add .
 	git commit -S -s -m "net: Import WireGuard v${VERSION} from ${WIREGUARD_URL}"
 	curl https://github.com/theradcolor/android_kernel_xiaomi_whyred/commit/c5ba946f6a2c7ba64989c425db6abf67d83a7797.patch | git am
 
 elif [ -d "${KERNEL_DIR}"/net/wireguard ]; then
 
-    FILE="${KERNEL_DIR}""/net/wireguard/version.h"
+	FILE="${KERNEL_DIR}""/net/wireguard/version.h"
 	CURRENT_VERSION="$(awk 'NR==2' "${FILE}" | sed 's/[^0-9.]*//g' | sed -r 's/^\s*(.*\S)*\s*$/\1/;/^$/d')"
 	if [ "${VERSION}" == "${CURRENT_VERSION}" ]; then
-	    echo "WireGuard is up-to-date!"
+		echo "WireGuard is up-to-date!"
 	else
-	    rm -rf "${KERNEL_DIR}""/net/wireguard"
+		rm -rf "${KERNEL_DIR}""/net/wireguard"
 		mkdir "${KERNEL_DIR}/net/wireguard"
-        tar -C "${KERNEL_DIR}/net/wireguard" -xf wireguard-linux-compat-"${VERSION}".tar.xz --strip-components=2 "wireguard-linux-compat-${VERSION}/src"
-	    git add .
-	    git commit -S -s -m "net: Update WireGuard to v${VERSION} from ${WIREGUARD_URL}"
+		tar -C "${KERNEL_DIR}/net/wireguard" -xf wireguard-linux-compat-"${VERSION}".tar.xz --strip-components=2 "wireguard-linux-compat-${VERSION}/src"
+		git add .
+		git commit -S -s -m "net: Update WireGuard to v${VERSION} from ${WIREGUARD_URL}"
 	fi
 
 fi

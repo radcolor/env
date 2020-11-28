@@ -1,218 +1,368 @@
 #!/usr/bin/env bash
 
-# Copyright (C) 2020 Shashank Baghel
-# Personal kernel build script for https://github.com/theradcolor/android_kernel_xiaomi_whyred
-# That will build four varient of kernel i.e 2-2(oldcam & newcam) varient of EAS and HMP
+# Copyright (C) 2020 Shashank Baghel under GPLv3
+# Personal kernel CI build script for https://github.com/theradcolor/android_kernel_xiaomi_whyred
 
-# Set enviroment and vaiables to avoid hardcoding them
-out="/home/theradcolor/whyred/out/"                             # Kernel build output directory
-BUILD="/home/theradcolor/whyred/kernel/"                        # Kernel source directory
-ANYKERNEL_DIR="/home/theradcolor/whyred/anykernel/"             # AnyKernel source directory
-IMG="/home/theradcolor/whyred/out/arch/arm64/boot/Image.gz-dtb" # Image with appended dtb output directory
+# Set enviroment and vaiables
 
-# Define colors
-red='\033[0;31m'
-green='\e[0;32m'
-white='\033[0m'
+DATE="$(date +%d%m%Y-%H%M%S)"
+CHANNEL_ID="-1001487815579"
+GRP_CHAT_ID="-1001375712567"
+WD="/home/theradcolor/whyred"
+OUT=${WD}"/out"
+KERNEL_DIR=${WD}"/kernel"
+ANYKERNEL_DIR=${WD}"/AnyKernel3"
+IMG=${OUT}"/arch/arm64/boot/Image.gz-dtb"
 
-# Clear screen
-clear
-
-function checkout_source()
-{
-    # Checkout build dir.
-    cd "${BUILD}" || exit
+function checkout_source() {
+    # Checkout to kernel source
+    cd "${KERNEL_DIR}"
 }
 
-function type()
-{
-    checkout_source
-    # Export build type
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    if [ "${BRANCH}" == "kernel-hmp" ]; then
-       export TYPE=hmp
-    elif [ "${BRANCH}" == "kernel-eas" ]; then
-       export TYPE=eas
-    elif [ "${BRANCH}" == "staging" ]; then
-       export TYPE=staging
-    else
-        export TYPE="${BRANCH}"
-    fi
-}
-
-function set_param_gcc()
-{
+function set_param_gcc() {
     #Export compiler dir.
-    export CROSS_COMPILE="/home/theradcolor/aarch64-linux-gnu/bin/aarch64-linux-gnu-"
-    export CROSS_COMPILE_ARM32="/home/theradcolor/arm-linux-gnueabi/bin/arm-linux-gnueabi-"
+    export CROSS_COMPILE=$WD"/aarch64-gcc/bin/aarch64-linux-gnu-"
+    export CROSS_COMPILE_ARM32=$WD"/arm-gcc/bin/arm-linux-gnueabi-"
 
-    #Export ARCH <arm, arm64, x86, x86_64>
+    # Export ARCH <arm, arm64, x86, x86_64>
     export ARCH=arm64
     #Export SUBARCH <arm, arm64, x86, x86_64>
     export SUBARCH=arm64
-    
-    #CCACHE parameters
-    ccache=$(which ccache)
-    export USE_CCACHE=1
-    export CCACHE_DIR="/home/theradcolor/.ccache"
-    
-    #kbuild host and user
+
+    # Kbuild host and user
     export KBUILD_BUILD_USER="shashank"
-    export KBUILD_BUILD_HOST="manjaro"
+    export KBUILD_BUILD_HOST="archlinux"
+    export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) + 1))"
+
+    COMPILER_STRING="$(${WD}"/aarch64-gcc/bin/aarch64-linux-gnu-gcc" --version | head -n 1)"
+    export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
 }
 
-function set_param_clang()
-{
-    # Export compiler dir.
-    CLANG_TRIPLE=aarch64-linux-gnu-
-    GCC64=/home/theradcolor/whyred/compilers/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-    GCC32=/home/theradcolor/whyred/compilers/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-    
+function set_param_clang() {
     # Export ARCH <arm, arm64, x86, x86_64>
     export ARCH=arm64
-    # Export SUBARCH <arm, arm64, x86, x86_64>
+    #Export SUBARCH <arm, arm64, x86, x86_64>
     export SUBARCH=arm64
-    
-    # CCACHE parameters
-    ccache=$(which ccache)
-    export USE_CCACHE=1
-    export CCACHE_DIR="/home/theradcolor/.ccache"
-    
-    # kbuild host and user
+
+    # Kbuild host and user
     export KBUILD_BUILD_USER="shashank"
-    export KBUILD_BUILD_HOST="manjaro"
-    
-    # Compiler String
-    CC="${ccache} /home/theradcolor/whyred/compilers/clang-r383902/bin/clang"
-    export KBUILD_COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+    export KBUILD_BUILD_HOST="archlinux"
+    export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) + 1))"
+
+    # Compiler
+    TC=$WD/clang/bin/clang
+    CLANG_DIR=$WD/clang
+    GCC32=$WD/clang/bin/arm-linux-gnueabi-
+    GCC64=$WD/clang/bin/aarch64-linux-gnu-
+    GCC64_TYPE=aarch64-linux-gnu-
+
+    COMPILER_STRING="$(${TC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' | sed 's/ *$//')"
+    export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
 }
 
-function build_gcc()
-{
+function set_param_aosp_clang() {
+    # Export ARCH <arm, arm64, x86, x86_64>
+    export ARCH=arm64
+    #Export SUBARCH <arm, arm64, x86, x86_64>
+    export SUBARCH=arm64
+
+    # Kbuild host and user
+    export KBUILD_BUILD_USER="shashank"
+    export KBUILD_BUILD_HOST="archlinux"
+    export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) + 1))"
+
+    COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
+    export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
+}
+
+function build_gcc() {
     checkout_source
     set_param_gcc
-    make O="${out}" clean
-    make O="${out}" mrproper
-    rm -rf "${out}"/arch/arm64/boot
-    make O="${out}" "${CONFIG}"
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
+
+    make O="${OUT}" "${CONFIG}"
 
     BUILD_START=$(date +"%s")
-    make O="${out}" -j6 2>&1| tee "${out}"/kernel.log
-    
+
+    # Build
+    make O="${OUT}" -j"${KBUILD_JOBS}"
+
+    BUILD_END=$(date +"%s")
+    DIFF=$(($BUILD_END - $BUILD_START))
+
     if [ -f "${IMG}" ]; then
-        BUILD_END=$(date +"%s")
-        DIFF=$("${BUILD_END}" - "${BUILD_START}")
-        echo -e "${green}" "Build completed in $($DIFF / 60) minute(s) and $($DIFF % 60) seconds." "${green}"
+        echo "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
         flash_zip
     else
-		echo -e "${red}" "Build failed, please fix the errors first bish!" "${red}"
-	fi
+        echo "Build failed, please fix the errors first bish!"
+    fi
 }
 
-function build_clang()
-{
+function build_clang() {
     checkout_source
     set_param_clang
-    make O="${out}" clean
-    make O="${out}" mrproper
-    rm -rf "${out}"/arch/arm64/boot
-    make O="${out}" "${CONFIG}"
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
+
+    make O="$OUT" ${CONFIG}
 
     BUILD_START=$(date +"%s")
-    make O="${out}" CC="${CC}" \
-    CROSS_COMPILE="${GCC64}" \
-    CROSS_COMPILE_ARM32="${GCC32}" \
-    CLANG_TRIPLE="${CLANG_TRIPLE}" \
-    -j6  2>&1| tee "$out"/kernel.log
-    
+
+    #Build
+    make -j"${KBUILD_JOBS}" O=$OUT CC="${TC}" LLVM_AR="${CLANG_DIR}/bin/llvm-ar" LLVM_NM="${CLANG_DIR}/bin/llvm-nm" LD="${CLANG_DIR}/bin/ld.lld" OBJCOPY="${CLANG_DIR}/bin/llvm-objcopy" OBJDUMP="${CLANG_DIR}/bin/llvm-objdump" STRIP="${CLANG_DIR}/bin/llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}"
+
+    BUILD_END=$(date +"%s")
+    DIFF=$(($BUILD_END - $BUILD_START))
+
     if [ -f "${IMG}" ]; then
-        BUILD_END=$(date +"%s")
-        DIFF=$("${BUILD_END}" - "${BUILD_START}")
-        echo -e "${green}" "Build completed in $($DIFF / 60) minute(s) and $($DIFF % 60) seconds." "${green}"
+        echo "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
         flash_zip
     else
-		echo -e "${red}" "Build failed, please fix the errors first bish!" "${red}"
-	fi
+        echo "Build failed, please fix the errors first bish!"
+    fi
 }
 
-function flash_zip()
-{
-    echo -e "${green}" "Now making a flashable zip of kernel with AnyKernel3" "${white}"
+function build_proton_clang() {
+    checkout_source
+    set_param_clang
 
-    type
-    check_camera
-    cd "${ANYKERNEL_DIR}" || exit
-    
-    if [ "${TYPE}" == "hmp" ]; then
-        git checkout ak-hmp
-    elif [ "${TYPE}" == "eas" ]; then
-        git checkout ak-eas
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
+
+    make O="$OUT" ${CONFIG}
+
+    BUILD_START=$(date +"%s")
+
+    # Build
+    make -j"${KBUILD_JOBS}" O=$OUT CC="${TC}" LLVM_AR="llvm-ar" LLVM_NM="llvm-nm" LD="ld.lld" OBJCOPY="llvm-objcopy" OBJDUMP="llvm-objdump" STRIP="llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}"
+
+    BUILD_END=$(date +"%s")
+    DIFF=$(($BUILD_END - $BUILD_START))
+
+    if [ -f "${IMG}" ]; then
+        echo "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s)."
+        flash_zip
     else
-        git checkout ak-cci
+        echo "Build failed, please fix the errors first bish!"
     fi
-    
-    export ZIPNAME=rad-"${TYPE}"-"${CAM_TYPE}"-whyred.zip
+}
 
-    # Cleanup and copy Image.gz-dtb to dir.
-    rm -f ./*.zip
-    rm -f Image.gz-dtb
-    cp "$out"/arch/arm64/boot/Image.gz-dtb "${ANYKERNEL_DIR}"/
+function build_aosp_clang() {
+    checkout_source
+    set_param_aosp_clang
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
+
+    make O="$OUT" ${CONFIG}
+
+    BUILD_START=$(date +"%s")
+
+    # Build
+    make -j"${KBUILD_JOBS}" O=$OUT ARCH=arm64 CC="clang" LLVM_AR="llvm-ar" LLVM_NM="llvm-nm" LD="ld.lld" OBJCOPY="llvm-objcopy" OBJDUMP="llvm-objdump" STRIP="llvm-strip" CLANG_TRIPLE="aarch64-linux-gnu-" CROSS_COMPILE=$WD"/gcc64/bin/aarch64-linux-android-" CROSS_COMPILE_ARM32=$WD"/gcc32/bin/arm-linux-androideabi-"
+
+    if [ -f "${IMG}" ]; then
+        BUILD_END=$(date +"%s")
+        DIFF=$(($BUILD_END - $BUILD_START))
+        echo "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
+        flash_zip
+    else
+        echo "Build failed, please fix the errors first bish!"
+    fi
+}
+
+function flash_zip() {
+    echo "Now making a flashable zip of kernel with AnyKernel3"
+
+    # Check camera type oldcam/newcam
+    check_camera
+
+    if [ ${KERNEL_TYPE} == "fakerad" ]; then
+        export ZIPNAME=fci-${TYPE}-${CAM_TYPE}-${DATE}
+    else
+        export ZIPNAME=ci-${TYPE}-${CAM_TYPE}-${DATE}
+    fi
+
+    # Checkout anykernel3 dir
+    cd "${ANYKERNEL_DIR}"
+
+    if [ ${TYPE} == "hmp" ]; then
+        git checkout ak-hmp
+    else
+        git checkout ak-eas
+    fi
+
+    # Patch anykernel3
+    #patch_anykernel
+
+    # Patch anykernel3 string
+    #patch_anykernel_string
+
+    # Copy Image.gz-dtb to dir.
+    cp ${OUT}/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
 
     # Build a flashable zip
-    zip -r9 "${ZIPNAME}" ./* -x README.md .git
+    zip -r9 ${ZIPNAME} * -x README.md .git
 
-    # Copy our zip to externel directory
-    cp ./*.zip "/home/theradcolor/whyred/"
+    # Sign the zip
+    # sign_zip
+
+    if [ ${KERNEL_TYPE} == "fakerad" ]; then
+        SHA256=$(sha256sum fci-*.zip | cut -d' ' -f1)
+    else
+        SHA256=$(sha256sum ci-*.zip | cut -d' ' -f1)
+    fi
+
+    # Push zip(s) to telegram
+    # tg_push
 }
 
-function check_camera()
-{
-    CAMERA="$(grep 'BLOBS' ${BUILD}/arch/arm64/configs/"${CONFIG}")"
-    if [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
-            CAM_TYPE="newcam"
-    elif [ "${CAMERA}" == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
-            CAM_TYPE="oldcam"
+function check_camera() {
+    CAMERA="$(grep 'BLOBS' ${KERNEL_DIR}/arch/arm64/configs/${CONFIG})"
+    if [ ${CAMERA} == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
+        export CAM_TYPE="newcam"
+    elif [ ${CAMERA} == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
+        export CAM_TYPE="oldcam"
     fi
 }
 
-# Execution
+function check_kernel_type() {
+    KERNEL_TYPE="$(grep 'LOCALVERSION=' ${KERNEL_DIR}/arch/arm64/configs/${CONFIG})"
+    KERNEL_TYPE=$(echo "${KERNEL_TYPE}" | cut -d'"' -f 2)
+    if [[ ${KERNEL_TYPE} == *"-rad-v"* ]]; then
+        export TYPE=hmp
+        export KERNEL_TYPE=rad
+    elif [[ ${KERNEL_TYPE} == *"-rad-x"* ]]; then
+        export TYPE=eas
+        export KERNEL_TYPE=rad
+    elif [[ ${KERNEL_TYPE} == *"-fakerad"* ]]; then
+        export TYPE=eas
+        export KERNEL_TYPE=fakerad
+    fi
+}
 
-# Checkout to HMP branch
-clear
-checkout_source
-type
-if [ "${TYPE}" != "hmp" ]; then
-       git checkout kernel-hmp
+function sign_zip() {
+    curl -sLo zipsigner-3.0.jar https://raw.githubusercontent.com/baalajimaestro/AnyKernel2/master/zipsigner-3.0.jar
+    java -jar zipsigner-3.0.jar ${ZIPNAME}.zip ${ZIPNAME}-signed.zip
+    rm -rf "${ZIPNAME}.zip"
+}
+
+function lto_patches() {
+    if [ "${LTO}" == "true" ]; then
+        if [ "${COMPILER}" == "gnu-gcc" ]; then
+
+            if [ "${KERNEL_TYPE}" == "fakerad" ]; then
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/fakerad-gcc-lto-patch.patch | git am
+                rm -rf *.patch
+            else
+                # GCC LTO patches for kernel
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/rad-kernel-gcc-lto-patch.patch | git am
+                rm -rf *.patch
+            fi
+
+        elif [ "${COMPILER}" == "proton-clang" ]; then
+
+            if [ "${KERNEL_TYPE}" == "fakerad" ]; then
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/fakerad-clang-lto-patch.patch | git am
+                rm -rf *.patch
+            else
+                # CLANG LTO patches for kernel
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/rad-kernel-clang-lto-patch.patch | git am
+            fi
+
+        elif [ "${COMPILER}" == "aosp-clang" ]; then
+
+            if [ "${KERNEL_TYPE}" == "fakerad" ]; then
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/fakerad-clang-lto-patch.patch | git am
+                rm -rf *.patch
+            else
+                # CLANG LTO patches for kernel
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/rad-kernel-clang-lto-patch.patch | git am
+            fi
+        else
+            echo "Compiler not specified"
+        fi
+    else
+        echo "Skipping LTO patches!"
+    fi
+}
+
+for i in "$@"; do
+    case $i in
+    --oldcam)
+        CONFIG="whyred_defconfig"
+        shift
+        ;;
+    --newcam)
+        CONFIG="whyred-newcam_defconfig"
+        shift
+        ;;
+    --fakerad)
+        CONFIG="fakerad_defconfig"
+        shift
+        ;;
+    --gcc)
+        COMPILER="gnu-gcc"
+        shift
+        ;;
+    --gcc-stable)
+        GCC_BRANCH="stable-gcc"
+        shift
+        ;;
+    --gcc-master)
+        GCC_BRANCH="master"
+        shift
+        ;;
+    --clang)
+        COMPILER="clang"
+        shift
+        ;;
+    --aosp-clang)
+        COMPILER="aosp-clang"
+        shift
+        ;;
+    --proton-clang)
+        COMPILER="proton-clang"
+        shift
+        ;;
+    --lto)
+        LTO="true"
+        shift
+        ;;
+    *)
+        # unknown option
+        echo "Unknown option(s)"
+        exit
+        ;;
+    esac
+done
+
+# Start Build (build_clang/build_aosp_clang/build_proton_clang/build_gcc)
+if [ "${COMPILER}" == "gnu-gcc" ]; then
+    build_gcc
+elif [ "${COMPILER}" == "clang" ]; then
+    build_clang
+elif [ "${COMPILER}" == "aosp-clang" ]; then
+    build_aosp_clang
+elif [ "${COMPILER}" == "proton-clang" ]; then
+    build_proton_clang
+else
+    build_gcc
+    CONFIG="whyred_defconfig"
+    echo "Compiler not specified"
 fi
-
-# HMP oldcam
-CONFIG=whyred_defconfig # Configuration for oldcam
-type
-check_camera
-echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
-build_gcc # build_clang or build_gcc
-
-# HMP newcam
-CONFIG=whyred-newcam_defconfig # Configuration for newcam
-type
-check_camera
-echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
-build_gcc # build_clang or build_gcc
-
-# Checkout to EAS branch
-checkout_source
-git checkout kernel-eas
-
-# EAS oldcam
-CONFIG=whyred_defconfig # Configuration for oldcam
-type
-check_camera
-echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
-build_gcc # build_clang or build_gcc
-
-# EAS newcam
-CONFIG=whyred-newcam_defconfig # Configuration for newcam
-type
-check_camera
-echo -e "${green}""Building $TYPE for $CAM_TYPE""${white}"
-build_gcc # build_clang or build_gcc

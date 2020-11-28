@@ -5,11 +5,11 @@
 import os
 from telegraph import Telegraph
 
-telegraph = Telegraph()
-Tag='5.4.1'
-Title='Rad Kernel Chaneglogs for v/x ' + Tag
+TAG0=os.environ['TAG_LATEST']
+TAG1=os.environ['TAG_SECOND_LATEST']
+Title='Rad Kernel Changelogs for v/x ' + TAG0
 
-os.system('cd /home/theradcolor/whyred/kernel && git log 5.4^..5.4.1 --oneline >> /home/theradcolor/lazyscripts/kernel/radcl.txt')
+os.system('git log {}^...{} --oneline >> radcl'.format(TAG1, TAG0))
 
 # Read text func() from a file
 def read(file):
@@ -24,9 +24,11 @@ def read(file):
     return data
 
 
+telegraph = Telegraph()
+
 telegraph.create_account(short_name='rad', author_name='Shashank', author_url='https://github.com/theradcolor')
 
-content = read("radcl.txt")
+content = read("radcl")
 content = "<br/><br/>".join(content.split("\n"))
 
 response = telegraph.create_page(
@@ -37,4 +39,3 @@ response = telegraph.create_page(
 )
 
 print('https://telegra.ph/{}'.format(response['path']))
-os.system('rm -rf /home/theradcolor/lazyscripts/kernel/radcl.txt')

@@ -12,8 +12,7 @@ sudo pacman -Syyu
 
 echo "Installing dependencies..."
 sudo pacman -S base-devel make wget multilib-devel gcc cmake clang \
-               automake zip curl aria2 bzip2 android-udev adb android-tools
-
+    automake zip curl aria2 bzip2 android-udev adb android-tools
 
 echo "Setting up git..."
 sudo pacman -S git
@@ -33,7 +32,7 @@ sudo pacman -S amd-ucode lm_sensors
 
 echo "Installing zen power utils..."
 # Zenmonitor needs zenpower dependencies so build that also!
-for package in zenpower-dkms zenmonitor; do 
+for package in zenpower-dkms zenmonitor; do
     git clone https://aur.archlinux.org/"${package}"
     cd "${package}" || exit
     makepkg -si

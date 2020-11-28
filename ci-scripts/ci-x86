@@ -4,7 +4,7 @@
 # To compile and install mainline/stable kernel for my machine running on arch
 
 # Set enviroment and vaiables
-DATE="`date +%d%m%Y-%H%M%S`"
+DATE="$(date +%d%m%Y-%H%M%S)"
 WD=$(pwd)
 K_DIR=${WD}
 K_VERSION=$(make -s kernelrelease)
@@ -13,142 +13,136 @@ TOKEN="123:xyz"
 CHAT_ID="-1001375712567"
 CHANNEL_ID="-1001487815579"
 
-function envsetup()
-{
-    # Kbuild host and user
-    export KBUILD_BUILD_USER="shashank"
-    export KBUILD_BUILD_HOST="archlinux"
+function envsetup() {
+  # Kbuild host and user
+  export KBUILD_BUILD_USER="shashank"
+  export KBUILD_BUILD_HOST="archlinux"
 
-    export KBUILD_JOBS="$((`grep -c '^processor' /proc/cpuinfo` * 2))"
+  export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) * 2))"
 }
 
-function build()
-{
-    # Cleanup dir.
-    make clean && make mrproper
+function build() {
+  # Cleanup dir.
+  make clean && make mrproper
 
-    # Make config
-    make arch_defconfig
+  # Make config
+  make arch_defconfig
 
-    # Make kernel
-    make -j"${KBUILD_JOBS}" all
+  # Make kernel
+  make -j"${KBUILD_JOBS}" all
 }
 
-function package()
-{
-    make -s kernelrelease > version
-    mkdir /drone/src/package
-    pkgdir="/drone/src/package"
-    local kernver="$(<version)"
-    local modulesdir="$pkgdir/usr/lib/modules/$kernver"
-    
-    echo "Installing boot image..."
-    # systemd expects to find the kernel here to allow hibernation
-    # https://github.com/systemd/systemd/commit/edda44605f06a41fb86b7ab8128dcf99161d2344
-    install -Dm644 "$(make -s image_name)" "$modulesdir/vmlinuz"
-    
-    # Used by mkinitcpio to name the kernel
-    echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
-    
-    echo "Installing modules..."
-    make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 modules_install
-    
-    # remove build and source links
-    rm "$modulesdir"/{source,build}
+function package() {
+  make -s kernelrelease >version
+  mkdir /drone/src/package
+  pkgdir="/drone/src/package"
+  local kernver="$(<version)"
+  local modulesdir="$pkgdir/usr/lib/modules/$kernver"
+
+  echo "Installing boot image..."
+  # systemd expects to find the kernel here to allow hibernation
+  # https://github.com/systemd/systemd/commit/edda44605f06a41fb86b7ab8128dcf99161d2344
+  install -Dm644 "$(make -s image_name)" "$modulesdir/vmlinuz"
+
+  # Used by mkinitcpio to name the kernel
+  echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
+
+  echo "Installing modules..."
+  make INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 modules_install
+
+  # remove build and source links
+  rm "$modulesdir"/{source,build}
 }
 
-function package-headers()
-{
-    pkgdesc="Headers and scripts for building modules for the linux kernel"
-    
-    local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
-    
-    echo "Installing build files..."
-    install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
+function package-headers() {
+  pkgdesc="Headers and scripts for building modules for the linux kernel"
+
+  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+
+  echo "Installing build files..."
+  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
     localversion.* version vmlinux
-    install -Dt "$builddir/kernel" -m644 kernel/Makefile
-    install -Dt "$builddir/arch/x86" -m644 arch/x86/Makefile
-    cp -t "$builddir" -a scripts
-    
-    # add objtool for external module building and enabled VALIDATION_STACK option
-    install -Dt "$builddir/tools/objtool" tools/objtool/objtool
-    
-    # add xfs and shmem for aufs building
-    mkdir -p "$builddir"/{fs/xfs,mm}
-    
-    echo "Installing headers..."
-    cp -t "$builddir" -a include
-    cp -t "$builddir/arch/x86" -a arch/x86/include
-    install -Dt "$builddir/arch/x86/kernel" -m644 arch/x86/kernel/asm-offsets.s
-    
-    install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
-    install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
-    
-    # http://bugs.archlinux.org/task/13146
-    install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
-    
-    # http://bugs.archlinux.org/task/20402
-    install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
-    install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
-    install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
-    
-    echo "Installing KConfig files..."
-    find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
-    
-    echo "Removing unneeded architectures..."
-    local arch
-    for arch in "$builddir"/arch/*/; do
-        [[ $arch = */x86/ ]] && continue
-        echo "Removing $(basename "$arch")"
-        rm -r "$arch"
-    done
-    
-    echo "Removing documentation..."
-    rm -r "$builddir/Documentation"
-    
-    echo "Removing broken symlinks..."
-    find -L "$builddir" -type l -printf 'Removing %P\n' -delete
-    
-    echo "Removing loose objects..."
-    find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
-    
-    echo "Stripping build tools..."
-    local file
-    while read -rd '' file; do
+  install -Dt "$builddir/kernel" -m644 kernel/Makefile
+  install -Dt "$builddir/arch/x86" -m644 arch/x86/Makefile
+  cp -t "$builddir" -a scripts
+
+  # add objtool for external module building and enabled VALIDATION_STACK option
+  install -Dt "$builddir/tools/objtool" tools/objtool/objtool
+
+  # add xfs and shmem for aufs building
+  mkdir -p "$builddir"/{fs/xfs,mm}
+
+  echo "Installing headers..."
+  cp -t "$builddir" -a include
+  cp -t "$builddir/arch/x86" -a arch/x86/include
+  install -Dt "$builddir/arch/x86/kernel" -m644 arch/x86/kernel/asm-offsets.s
+
+  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
+  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
+
+  # http://bugs.archlinux.org/task/13146
+  install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
+
+  # http://bugs.archlinux.org/task/20402
+  install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
+  install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
+  install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
+
+  echo "Installing KConfig files..."
+  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
+
+  echo "Removing unneeded architectures..."
+  local arch
+  for arch in "$builddir"/arch/*/; do
+    [[ $arch = */x86/ ]] && continue
+    echo "Removing $(basename "$arch")"
+    rm -r "$arch"
+  done
+
+  echo "Removing documentation..."
+  rm -r "$builddir/Documentation"
+
+  echo "Removing broken symlinks..."
+  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
+
+  echo "Removing loose objects..."
+  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
+
+  echo "Stripping build tools..."
+  local file
+  while read -rd '' file; do
     case "$(file -bi "$file")" in
-      application/x-sharedlib\;*)      # Libraries (.so)
-        strip -v $STRIP_SHARED "$file" ;;
-      application/x-archive\;*)        # Libraries (.a)
-        strip -v $STRIP_STATIC "$file" ;;
-      application/x-executable\;*)     # Binaries
-        strip -v $STRIP_BINARIES "$file" ;;
-      application/x-pie-executable\;*) # Relocatable binaries
-        strip -v $STRIP_SHARED "$file" ;;
+    application/x-sharedlib\;*) # Libraries (.so)
+      strip -v $STRIP_SHARED "$file" ;;
+    application/x-archive\;*) # Libraries (.a)
+      strip -v $STRIP_STATIC "$file" ;;
+    application/x-executable\;*) # Binaries
+      strip -v $STRIP_BINARIES "$file" ;;
+    application/x-pie-executable\;*) # Relocatable binaries
+      strip -v $STRIP_SHARED "$file" ;;
     esac
-    done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
-    
-    echo "Stripping vmlinux..."
-    strip -v $STRIP_STATIC "$builddir/vmlinux"
-    
-    echo "Adding symlink..."
-    mkdir -p "$pkgdir/usr/src"
-    ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
+  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
+
+  echo "Stripping vmlinux..."
+  strip -v $STRIP_STATIC "$builddir/vmlinux"
+
+  echo "Adding symlink..."
+  mkdir -p "$pkgdir/usr/src"
+  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
 }
 
-function zipping()
-{
-    cd package
-    zip -r9 linux.zip -r .
+function zipping() {
+  cd package
+  zip -r9 linux.zip -r .
 }
 
-function send-package()
-{
-    LINUX="/drone/src/package/linux.zip"
-    gh auth login --with-token ${GITHUB_TOKEN}
-    git clone https://theradcolor:${GITHUB_TOKEN}@github.com/theradcolor/linux-ci-release.git && cd linux-ci-release
-    gh release delete v1
-    git push origin :refs/tags/v1
-    gh release create v1 ${LINUX} -t 'Linux Release' -n 'Sample Notes'
+function send-package() {
+  LINUX="/drone/src/package/linux.zip"
+  gh auth login --with-token ${GITHUB_TOKEN}
+  git clone https://theradcolor:${GITHUB_TOKEN}@github.com/theradcolor/linux-ci-release.git && cd linux-ci-release
+  gh release delete v1
+  git push origin :refs/tags/v1
+  gh release create v1 ${LINUX} -t 'Linux Release' -n 'Sample Notes'
 }
 
 envsetup

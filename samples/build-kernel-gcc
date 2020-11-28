@@ -51,7 +51,7 @@ make O="$out" ARCH=arm64 device_defconfig
 make O="$out" \
     CROSS_COMPILE="${GCC64}" \
     CROSS_COMPILE_ARM32="${GCC32}" \
-    -j6  2>&1| tee "$out"/kernel.log
+    -j6 2>&1 | tee "$out"/kernel.log
 
 BUILD_END=$(date +"%s")
 DIFF=$("$BUILD_END" - "$BUILD_START")

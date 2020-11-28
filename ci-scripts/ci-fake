@@ -3,6 +3,13 @@
 # Copyright (C) 2020 Shashank Baghel under GPLv3
 # Personal kernel CI build script for https://github.com/theradcolor/android_kernel_xiaomi_whyred
 
+# Only build if trigger event is custom and ci kernel type is fakerad
+if [[ ${DRONE_BUILD_EVENT} == "custom" && ${CI_KERNEL_TYPE} == "fakerad" ]]; then
+    echo "PASS"
+else
+    exit
+fi
+
 # Set enviroment and vaiables
 
 # Configure system
@@ -12,60 +19,52 @@ export TZ=Asia/Kolkata
 git config --global user.name "Shashank Baghel"
 git config --global user.email "theradcolor@gmail.com"
 
+DATE="$(date +%d%m%Y-%H%M%S)"
 CONFIG="fakerad_defconfig"
-DATE="`date +%d%m%Y-%H%M%S`"
-CHANNEL_ID="-1001487815579"
-GRP_CHAT_ID="-1001375712567"
-BOT_TOKEN="123:xyz"
 WD=$(pwd)
 OUT=${WD}"/out"
 KERNEL_DIR=${WD}
 ANYKERNEL_DIR=${WD}"/AnyKernel3"
 IMG=${OUT}"/arch/arm64/boot/Image.gz-dtb"
 
-function clone_clang()
-{
+function clone_clang() {
     git clone --depth=1 --quiet https://github.com/theradcolor/clang clang
 }
 
-function clone_proton_clang()
-{
+function clone_proton_clang() {
     git clone --depth=1 --quiet https://github.com/kdrag0n/proton-clang clang
 }
 
-function clone_aosp_clang()
-{
-    git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc
+function clone_aosp_clang() {
+    git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 gcc64
     git clone --depth=1 --quiet https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 gcc32
     mkdir clang
     cd clang || exit
-    wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r383902.tar.gz 
+    wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r416183.tar.gz
     tar -xzf clang*
     cd .. || exit
 }
 
-function clone_gcc()
-{
-    git clone --depth=1 --quiet https://github.com/theradcolor/arm-linux-gnueabi -b ${GCC_BRANCH} gcc32
-    git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-linux-gnu -b ${GCC_BRANCH} gcc64
+function clone_gcc() {
+    git clone --depth=1 --quiet https://github.com/theradcolor/arm-eabi -b ${GCC_BRANCH} gcc32
+    git clone --depth=1 --quiet https://github.com/theradcolor/aarch64-elf -b ${GCC_BRANCH} gcc64
 }
 
-function clone_anykernel()
-{
+function clone_anykernel() {
     git clone --depth=1 --quiet https://github.com/theradcolor/AnyKernel3 -b ${AK_CLONE_BRANCH}
 }
 
-function checkout_source()
-{
+function checkout_source() {
     # Checkout to kernel source
     cd "${KERNEL_DIR}"
 }
 
-function set_param_gcc()
-{
+function set_param_gcc() {
     #Export compiler dir.
-    export CROSS_COMPILE=$WD"/gcc64/bin/aarch64-linux-gnu-"
-    export CROSS_COMPILE_ARM32=$WD"/gcc32/bin/arm-linux-gnueabi-"
+    export CROSS_COMPILE=$WD"/gcc64/bin/aarch64-elf-"
+    export CROSS_COMPILE_ARM32=$WD"/gcc32/bin/arm-eabi-"
+
+    export PATH="/drone/src/source/gcc64"/bin/:"/drone/src/source/gcc32"/bin/:/usr/bin:$PATH
 
     # Export ARCH <arm, arm64, x86, x86_64>
     export ARCH=arm64
@@ -75,15 +74,17 @@ function set_param_gcc()
     # Kbuild host and user
     export KBUILD_BUILD_USER="shashank"
     export KBUILD_BUILD_HOST="archlinux"
-    export KBUILD_JOBS="$((`grep -c '^processor' /proc/cpuinfo` * 2))"
+    export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) * 2))"
 
-    TC=$WD/gcc64/bin/aarch64-linux-gnu-gcc
-    COMPILER_STRING="$(${WD}"/gcc64/bin/aarch64-linux-gnu-gcc" --version | head -n 1)"
+    TC=$WD/gcc64/bin/aarch64-elf-gcc
+    COMPILER_STRING="$(${WD}"/gcc64/bin/aarch64-elf-gcc" --version | head -n 1)"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
+
+    export COMPILER_HEAD_COMMIT=$(cd gcc64 && git rev-parse HEAD)
+    export COMPILER_HEAD_COMMIT_URL="https://github.com/theradcolor/aarch64-elf/commit/${COMPILER_HEAD_COMMIT}"
 }
 
-function set_param_clang()
-{
+function set_param_clang() {
     # Export ARCH <arm, arm64, x86, x86_64>
     export ARCH=arm64
     #Export SUBARCH <arm, arm64, x86, x86_64>
@@ -92,7 +93,7 @@ function set_param_clang()
     # Kbuild host and user
     export KBUILD_BUILD_USER="shashank"
     export KBUILD_BUILD_HOST="archlinux"
-    export KBUILD_JOBS="$((`grep -c '^processor' /proc/cpuinfo` * 2))"
+    export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) * 2))"
 
     # Compiler
     GCC32=$WD/clang/bin/arm-linux-gnueabi-
@@ -104,10 +105,19 @@ function set_param_clang()
     CLANG_DIR=$WD/clang
     COMPILER_STRING="$(${TC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' | sed 's/ *$//')"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
+
+    export COMPILER_HEAD_COMMIT=$(cd clang && git rev-parse HEAD)
+
+    if [ ${COMPILER} == "clang" ]; then
+        export COMPILER_HEAD_COMMIT_URL="https://github.com/theradcolor/clang/commit/${COMPILER_HEAD_COMMIT}"
+    elif [ ${COMPILER} == "proton-clang" ]; then
+        export COMPILER_HEAD_COMMIT_URL="https://github.com/kdrag0n/proton-clang/commit/${COMPILER_HEAD_COMMIT}"
+    else
+        echo "Compiler not specified"
+    fi
 }
 
-function set_param_aosp_clang()
-{
+function set_param_aosp_clang() {
     # Export ARCH <arm, arm64, x86, x86_64>
     export ARCH=arm64
     #Export SUBARCH <arm, arm64, x86, x86_64>
@@ -116,27 +126,41 @@ function set_param_aosp_clang()
     # Kbuild host and user
     export KBUILD_BUILD_USER="shashank"
     export KBUILD_BUILD_HOST="archlinux"
-    export KBUILD_JOBS="$((`grep -c '^processor' /proc/cpuinfo` * 2))"
+    export KBUILD_JOBS="$(($(grep -c '^processor' /proc/cpuinfo) * 2))"
 
     # Compiler String
     CC="${ccache} $WD/clang/bin/clang"
     COMPILER_STRING="$(${CC} --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
     export KBUILD_COMPILER_STRING="${COMPILER_STRING}"
+
+    #export COMPILER_HEAD_COMMIT=$(cd clang && git rev-parse HEAD)
+    #export COMPILER_HEAD_COMMIT_URL="https://github.com/theradcolor/clang/commit/${COMPILER_HEAD_COMMIT}"
 }
 
-function build_gcc()
-{
+function build_gcc() {
     clone_gcc
     checkout_source
     set_param_gcc
     # Push build message to telegram
-    tg_inform
+    # tg_inform
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
+
+    #Export compiler dir.
+    export CROSS_COMPILE=$WD"/gcc64/bin/aarch64-elf-"
+    export CROSS_COMPILE_ARM32=$WD"/gcc32/bin/arm-eabi-"
 
     make O="${OUT}" "${CONFIG}"
 
     BUILD_START=$(date +"%s")
-    make O="${OUT}" -j"${KBUILD_JOBS}" 2>&1| tee "${OUT}"/build.log
-    
+
+    # Build
+    make O="${OUT}" CROSS_COMPILE="/drone/src/source/gcc64/bin/aarch64-elf-" CROSS_COMPILE_ARM32="/drone/src/source/gcc32/bin/arm-eabi-" -j"${KBUILD_JOBS}" 2>&1 | tee "${OUT}"/build.log
+
     BUILD_END=$(date +"%s")
     DIFF=$(($BUILD_END - $BUILD_START))
 
@@ -145,23 +169,29 @@ function build_gcc()
         flash_zip
     else
         tg_push_error
-		echo "Build failed, please fix the errors first bish!"
-	fi
+        echo "Build failed, please fix the errors first bish!"
+    fi
 }
 
-function build_clang()
-{
+function build_clang() {
     clone_clang
     checkout_source
     set_param_clang
     # Push build message to telegram
-    tg_inform
+    # tg_inform
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
 
     make O="$OUT" ${CONFIG}
 
     BUILD_START=$(date +"%s")
 
-    make -j"${KBUILD_JOBS}" O=$OUT CC="${TC}" LLVM_AR="${CLANG_DIR}/bin/llvm-ar" LLVM_NM="${CLANG_DIR}/bin/llvm-nm" LD="${CLANG_DIR}/bin/ld.lld" OBJCOPY="${CLANG_DIR}/bin/llvm-objcopy" OBJDUMP="${CLANG_DIR}/bin/llvm-objdump" STRIP="${CLANG_DIR}/bin/llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}" 2>&1| tee $OUT/build.log
+    #Build
+    make -j"${KBUILD_JOBS}" O=$OUT CC="${TC}" LLVM_AR="${CLANG_DIR}/bin/llvm-ar" LLVM_NM="${CLANG_DIR}/bin/llvm-nm" LD="${CLANG_DIR}/bin/ld.lld" OBJCOPY="${CLANG_DIR}/bin/llvm-objcopy" OBJDUMP="${CLANG_DIR}/bin/llvm-objdump" STRIP="${CLANG_DIR}/bin/llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}" 2>&1 | tee $OUT/build.log
 
     BUILD_END=$(date +"%s")
     DIFF=$(($BUILD_END - $BUILD_START))
@@ -171,23 +201,29 @@ function build_clang()
         flash_zip
     else
         tg_push_error
-		echo "Build failed, please fix the errors first bish!"
-	fi
+        echo "Build failed, please fix the errors first bish!"
+    fi
 }
 
-function build_proton_clang()
-{
+function build_proton_clang() {
     clone_proton_clang
     checkout_source
     set_param_clang
     # Push build message to telegram
-    tg_inform
+    # tg_inform
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
 
     make O="$OUT" ${CONFIG}
 
     BUILD_START=$(date +"%s")
 
-    make -j"${KBUILD_JOBS}" O=$OUT CC="${TC}" LLVM_AR="${CLANG_DIR}/bin/llvm-ar" LLVM_NM="${CLANG_DIR}/bin/llvm-nm" LD="${CLANG_DIR}/bin/ld.lld" OBJCOPY="${CLANG_DIR}/bin/llvm-objcopy" OBJDUMP="${CLANG_DIR}/bin/llvm-objdump" STRIP="${CLANG_DIR}/bin/llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}" 2>&1| tee $OUT/build.log
+    # Build
+    make -j"${KBUILD_JOBS}" O=$OUT CC="${TC}" LLVM_AR="${CLANG_DIR}/bin/llvm-ar" LLVM_NM="${CLANG_DIR}/bin/llvm-nm" LD="${CLANG_DIR}/bin/ld.lld" OBJCOPY="${CLANG_DIR}/bin/llvm-objcopy" OBJDUMP="${CLANG_DIR}/bin/llvm-objdump" STRIP="${CLANG_DIR}/bin/llvm-strip" CROSS_COMPILE="${GCC64}" CROSS_COMPILE_ARM32="${GCC32}" CLANG_TRIPLE="${GCC64_TYPE}" 2>&1 | tee $OUT/build.log
 
     BUILD_END=$(date +"%s")
     DIFF=$(($BUILD_END - $BUILD_START))
@@ -197,23 +233,29 @@ function build_proton_clang()
         flash_zip
     else
         tg_push_error
-		echo "Build failed, please fix the errors first bish!"
-	fi
+        echo "Build failed, please fix the errors first bish!"
+    fi
 }
 
-function build_aosp_clang()
-{
+function build_aosp_clang() {
     clone_aosp_clang
     checkout_source
     set_param_aosp_clang
     # Push build message to telegram
-    tg_inform
+    # tg_inform
+
+    # Check kernel type
+    check_kernel_type
+
+    # Patch kernel for LTO
+    lto_patches
 
     make O="$OUT" ${CONFIG}
 
     BUILD_START=$(date +"%s")
 
-    make -j"${KBUILD_JOBS}" O=$OUT ARCH=arm64 CC=$WD"/clang/bin/clang" CLANG_TRIPLE="aarch64-linux-gnu-" CROSS_COMPILE=$WD"/gcc/bin/aarch64-linux-android-" CROSS_COMPILE_ARM32=$WD"/gcc32/bin/arm-linux-androideabi-"  2>&1| tee $OUT/build.log
+    # Build
+    make -j"${KBUILD_JOBS}" O=$OUT ARCH=arm64 CC=$WD"/clang/bin/clang" CLANG_TRIPLE="aarch64-linux-gnu-" CROSS_COMPILE=$WD"/gcc64/bin/aarch64-linux-android-" CROSS_COMPILE_ARM32=$WD"/gcc32/bin/arm-linux-androideabi-" 2>&1 | tee $OUT/build.log
 
     if [ -f "${IMG}" ]; then
         BUILD_END=$(date +"%s")
@@ -222,52 +264,65 @@ function build_aosp_clang()
         flash_zip
     else
         tg_push_error
-		echo "Build failed, please fix the errors first bish!"
-	fi
+        echo "Build failed, please fix the errors first bish!"
+    fi
 }
 
-function flash_zip()
-{
+function flash_zip() {
     echo "Now making a flashable zip of kernel with AnyKernel3"
 
-    check_kernel_type
     # Clone AnyKernel3 based on EAS/HMP
     clone_anykernel
+
+    # Check camera type oldcam/newcam
     check_camera
-    export ZIPNAME=fakerad-ci-${TYPE}-${CAM_TYPE}-${DATE}.zip
+
+    if [ ${KERNEL_TYPE} == "fakerad" ]; then
+        export ZIPNAME=fci-${TYPE}-${CAM_TYPE}-${DATE}
+    else
+        export ZIPNAME=ci-${TYPE}-${CAM_TYPE}-${DATE}
+    fi
 
     # Checkout anykernel3 dir
     cd "${ANYKERNEL_DIR}"
-    
+
     # Patch anykernel3
     #patch_anykernel
 
     # Patch anykernel3 string
-    patch_anykernel_string
+    #patch_anykernel_string
 
     # Copy Image.gz-dtb to dir.
     cp ${OUT}/arch/arm64/boot/Image.gz-dtb ${ANYKERNEL_DIR}/
 
     # Build a flashable zip
     zip -r9 ${ZIPNAME} * -x README.md .git
-    MD5=$(md5sum fakerad-ci-*.zip | cut -d' ' -f1)
+
+    # Sign the zip
+    sign_zip
+
+    if [ ${KERNEL_TYPE} == "fakerad" ]; then
+        SHA256=$(sha256sum fci-*.zip | cut -d' ' -f1)
+    else
+        SHA256=$(sha256sum ci-*.zip | cut -d' ' -f1)
+    fi
+
+    # Push zip(s) to telegram
     tg_push
 }
 
-function check_camera()
-{
+function check_camera() {
     CAMERA="$(grep 'BLOBS' ${KERNEL_DIR}/arch/arm64/configs/${CONFIG})"
     if [ ${CAMERA} == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=y" ]; then
-            CAM_TYPE="newcam"
-        elif [ ${CAMERA} == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
-            CAM_TYPE="oldcam"
+        export CAM_TYPE="newcam"
+    elif [ ${CAMERA} == "CONFIG_XIAOMI_NEW_CAMERA_BLOBS=n" ]; then
+        export CAM_TYPE="oldcam"
     fi
 }
 
-function check_kernel_type()
-{
+function check_kernel_type() {
     KERNEL_TYPE="$(grep 'LOCALVERSION=' ${KERNEL_DIR}/arch/arm64/configs/${CONFIG})"
-    KERNEL_TYPE=`echo "${KERNEL_TYPE}" | cut -d'"' -f 2`
+    KERNEL_TYPE=$(echo "${KERNEL_TYPE}" | cut -d'"' -f 2)
     if [[ ${KERNEL_TYPE} == *"-rad-v"* ]]; then
         export TYPE=hmp
         export KERNEL_TYPE=rad
@@ -283,120 +338,159 @@ function check_kernel_type()
     fi
 }
 
-function tg_inform()
-{
-    if [ ${CONFIG} == "whyred_defconfig" ]; then
-        curl -s -X POST https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHANNEL_ID} -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>⚒️ New CI build has been triggered"'!'" ⚒️</b>%0A%0A<b>Linux version tag • </b><code>v$(make kernelversion)</code>%0A<b>Git branch • </b><code>$(git rev-parse --abbrev-ref HEAD)</code>%0A<b>Commit head • </b><code>$(git log --pretty=format:'%h : %s' -1)</code>%0A<b>Compiler • </b><code>$(${TC} --version | head -n 1)</code>%0A<b>At • </b><code>$(TZ=Asia/Kolkata date)</code>%0A"
+function tg_inform() {
+    KERNEL_COMMIT="$(git rev-parse HEAD)"
+    KERNEL_URL="https://github.com/theradcolor/android_kernel_xiaomi_whyred/commit/"
+    SCRIPT_COMMIT="$(cd lazyscripts && git log -n 1 --pretty=format:%H -- ci-scripts/ci-rad)"
+    SCRIPT_URL="https://github.com/theradcolor/lazyscripts/commit/"
+
+    if [ ${CONFIG} == "fakerad_defconfig" ]; then
+        curl -s -X POST https://api.telegram.org/bot${TG_BOT_API}/sendMessage?chat_id=${TRIGGERED_CHANNEL} -d "disable_web_page_preview=true" -d "parse_mode=markdownV2&text=⚒️ *Building with* [*$(echo ${SCRIPT_COMMIT} | cut -c1-8)*](${SCRIPT_URL}${SCRIPT_COMMIT}) / [*$(echo ${KERNEL_COMMIT} | cut -c1-8)*](${KERNEL_URL}${KERNEL_COMMIT})"
     fi
 }
 
-function tg_push()
-{
-    ZIP="${ANYKERNEL_DIR}"/$(echo fakerad-ci-*.zip)
-
-    curl -F document=@"${ZIP}" "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-			-F chat_id="${CHANNEL_ID}" \
-			-F "disable_web_page_preview=true" \
-			-F "parse_mode=html" \
-            -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) | <b>MD5 checksum</b> • <code>${MD5}</code>"
-    
-    curl -F document=@"${ZIP}" "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-			-F chat_id="${GRP_CHAT_ID}" \
-			-F "disable_web_page_preview=true" \
-			-F "parse_mode=html" \
-            -F caption="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) | <b>MD5 checksum</b> • <code>${MD5}</code>"
-
+function sign_zip() {
+    curl -sLo zipsigner-4.0.jar https://raw.githubusercontent.com/baalajimaestro/AnyKernel3/master/zipsigner-4.0.jar
+    java -jar zipsigner-4.0.jar ${ZIPNAME}.zip ${ZIPNAME}-signed.zip
+    rm -rf "${ZIPNAME}.zip"
 }
 
-function tg_push_error()
-{
-	curl -s -X POST https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHANNEL_ID} -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>❌ Build failed after $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s).</b>"
+function tg_push() {
+    if [ ${KERNEL_TYPE} == "fakerad" ]; then
+        ZIP="${ANYKERNEL_DIR}"/$(echo fci-*.zip)
+    else
+        ZIP="${ANYKERNEL_DIR}"/$(echo ci-*.zip)
+    fi
+
+    CAPTION="⭕️ Build took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s) | *SHA256 checksum* • \`${SHA256}\` | *Compiler* • [${COMPILER_STRING}](${COMPILER_HEAD_COMMIT_URL})"
+
+    echo ${ZIP} >/drone/src/path-to-zip.txt
+    echo ${CAPTION} >/drone/src/path-to-zip-caption.txt
 }
 
-function tg_push_log()
-{
-   	LOG=${KERNEL_DIR}/build.log
-	curl -F document=@"${LOG}" "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-			-F chat_id="${GRP_CHAT_ID}" \
-			-F "disable_web_page_preview=true" \
-			-F "parse_mode=html" \
-            -F caption="Build logs for ${TYPE}-${CAM_TYPE}, took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s). @theradcolor"
+function tg_push_error() {
+    curl -s -X POST https://api.telegram.org/bot${TG_BOT_API}/sendMessage?chat_id=${TRIGGERED_CHANNEL} -d "disable_web_page_preview=true" -d "parse_mode=html&text=<b>❌ Build failed after $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s).</b>"
 }
 
-function patch_anykernel()
-{
-    # Not using anymore.
+function tg_push_log() {
+    LOG=${KERNEL_DIR}/build.log
+    curl -F document=@"${LOG}" "https://api.telegram.org/bot${TG_BOT_API}/sendDocument" \
+        -F chat_id="${TRIGGERED_CHANNEL}" \
+        -F "disable_web_page_preview=true" \
+        -F "parse_mode=html" \
+        -F caption="Build logs for ${TYPE}-${CAM_TYPE}, took $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) second(s). @theradcolor"
+}
+
+function patch_anykernel() {
     if [ ${TYPE} == "eas" ]; then
         curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-eas.patch | git am
         rm -rf *.patch
+    elif [ ${TYPE} == "hmp" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-hmp.patch | git am
+        rm -rf *.patch
     elif [ ${TYPE} == "staging-eas" ]; then
         curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-eas.patch | git am
+        rm -rf *.patch
+    elif [ ${TYPE} == "staging-hmp" ]; then
+        curl https://raw.githubusercontent.com/theradcolor/patches/master/0001-anykernel3-add-our-init.rc-script-to-execute-on-boot-hmp.patch | git am
         rm -rf *.patch
     else
         echo "Type not mentioned, skipping patches!"
     fi
 }
 
-function patch_anykernel_string()
-{
+function patch_anykernel_string() {
     # Append "(CI)" to the kernel output logs of anykernel based on type.
     AK_UPDATER_BINARY=${ANYKERNEL_DIR}"/META-INF/com/google/android/update-binary"
     if [ ${KERNEL_TYPE} == "fakerad" ]; then
-       sed -i s/"RAD KERNEL"/"FAKERAD KERNEL (CI)"/g ${AK_UPDATER_BINARY}
+        sed -i s/"RAD KERNEL"/"FAKERAD KERNEL (CI)"/g ${AK_UPDATER_BINARY}
     elif [ ${KERNEL_TYPE} == "rad" ]; then
-       sed -i s/"RAD KERNEL"/"RAD KERNEL (CI)"/g ${AK_UPDATER_BINARY}
+        sed -i s/"RAD KERNEL"/"RAD KERNEL (CI)"/g ${AK_UPDATER_BINARY}
     else
         echo "Kernel type is not defined, skipping anykernel string patch!"
     fi
 }
 
-for i in "$@"
-do
-case $i in
+function lto_patches() {
+    if [ ${LTO} == "true" ]; then
+        if [ ${COMPILER} == "gnu-gcc" ]; then
+
+            if [ ${KERNEL_TYPE} == "fakerad" ]; then
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/fakerad-gcc-lto-patch.patch | git am
+                rm -rf *.patch
+            else
+                # GCC LTO patches for kernel
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/rad-kernel-gcc-lto-patch.patch | git am
+                rm -rf *.patch
+            fi
+
+        elif [ ${COMPILER} == "proton-clang" ]; then
+
+            if [ ${KERNEL_TYPE} == "fakerad" ]; then
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/fakerad-clang-lto-patch.patch | git am
+                rm -rf *.patch
+            else
+                # CLANG LTO patches for kernel
+                curl https://raw.githubusercontent.com/theradcolor/patches/master/rad-kernel-clang-lto-patch.patch | git am
+            fi
+        else
+            echo "Compiler not specified"
+        fi
+    else
+        echo "Skipping LTO patches!"
+    fi
+}
+
+for i in "$@"; do
+    case $i in
     --gcc)
-    COMPILER="gnu-gcc"
-    shift
-    ;;
+        COMPILER="gnu-gcc"
+        shift
+        ;;
     --gcc-stable)
-    GCC_BRANCH="stable-gcc"
-    shift
-    ;;
+        GCC_BRANCH="stable-gcc"
+        shift
+        ;;
     --gcc-master)
-    GCC_BRANCH="master"
-    shift
-    ;;
+        GCC_BRANCH="master"
+        shift
+        ;;
     --clang)
-    COMPILER="clang"
-    shift
-    ;;
+        COMPILER="clang"
+        shift
+        ;;
     --aosp-clang)
-    COMPILER="aosp-clang"
-    shift
-    ;;
+        COMPILER="aosp-clang"
+        shift
+        ;;
     --proton-clang)
-    COMPILER="proton-clang"
-    shift
-    ;;
+        COMPILER="proton-clang"
+        shift
+        ;;
+    --lto)
+        LTO="true"
+        shift
+        ;;
     *)
-    # unknown option
-    echo "Unknown option(s)"
-    exit
-    ;;
-esac
+        # unknown option
+        echo "Unknown option(s)"
+        exit
+        ;;
+    esac
 done
 
 # Start Build (build_clang/build_aosp_clang/build_proton_clang/build_gcc)
-if [ ${COMPILER} == "gnu-gcc" ]; then
+if [ "${COMPILER}" == "gnu-gcc" ]; then
     build_gcc
-elif [ ${COMPILER} == "clang" ]; then
+elif [ "${COMPILER}" == "clang" ]; then
     build_clang
-elif [ ${COMPILER} == "aosp-clang" ]; then
+elif [ "${COMPILER}" == "aosp-clang" ]; then
     build_aosp_clang
-elif [ ${COMPILER} == "proton-clang" ]; then
+elif [ "${COMPILER}" == "proton-clang" ]; then
     build_proton_clang
 else
-    echo "Compiler not specified"
+    echo "Compiler not specified, building default with gcc master"
+    COMPILER="gnu-gcc"
+    GCC_BRANCH="master"
+    build_gcc
 fi
-
-# Post build logs
-# tg_push_log

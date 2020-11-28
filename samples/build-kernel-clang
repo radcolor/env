@@ -57,7 +57,7 @@ make O="$out" CC="${CC}" \
     CROSS_COMPILE="${GCC64}" \
     CROSS_COMPILE_ARM32="${GCC32}" \
     CLANG_TRIPLE="${CLANG_TRIPLE}" \
-    -j6  2>&1| tee "$out"/kernel.log
+    -j6 2>&1 | tee "$out"/kernel.log
 
 BUILD_END=$(date +"%s")
 DIFF=$("$BUILD_END" - "$BUILD_START")

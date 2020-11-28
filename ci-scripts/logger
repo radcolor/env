@@ -1,19 +1,91 @@
 #!/bin/bash
 
-function send_kernel_logs()
-{
-    LOG=${KERNEL_DIR}/build.log
-	curl -F document=@"${LOG}" "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
-		-F chat_id="${GRP_CHAT_ID}" \
-		-F "disable_web_page_preview=true" \
-		-F "parse_mode=html" \
-        -F caption="Build logs for ${TYPE}-${CAM_TYPE}. @theradcolor"
+GRP_CHAT_ID0="-1001487815579"
+GRP_CHAT_ID1="-1001375712567"
 
+function send_radkernel_and_logs() {
+	# cd to project
+	cd /root/project/source
+
+	# Zip file path
+	ZIP_FILE=$(cat path-to-zip.txt)
+
+	# Zip caption file path
+	ZIP_FILE_CAPTION=$(cat path-to-zip-caption.txt)
+
+	# Recorded log file path.
+	LOG_FILE=$(echo build-logs-*.log)
+
+	# Generate SHA256 Checksum
+	SHA256=$(sha256sum ${LOG_FILE} | cut -d' ' -f1)
+
+	# Scrub appended secrets from file.
+	sed -i s/${TG_BOT_API}/123:xyz/g ${LOG_FILE}
+
+	# Log caption
+	LOG_CAPTION="<b>SHA256 checksum</b> • <code>${SHA256}</code>"
+
+	if [ "${PUBLIC_PUSH}" == "true" ]; then
+		curl -s \
+			-X POST "https://api.telegram.org/bot"${TG_BOT_API}"/sendMediaGroup" \
+			-F chat_id="${GRP_CHAT_ID0}" \
+			-F media='[{"type":"document","media":"attach://file_1","parse_mode":"markdown","caption":"'"${ZIP_FILE_CAPTION}"'"},{"type":"document","media":"attach://file_2","parse_mode":"html","caption":"'"${LOG_CAPTION}"'"}]' \
+			-F file_1="@$ZIP_FILE" \
+			-F file_2="@$LOG_FILE"
+	fi
+
+	curl -s \
+		-X POST "https://api.telegram.org/bot"${TG_BOT_API}"/sendMediaGroup" \
+		-F chat_id="${GRP_CHAT_ID1}" \
+		-F media='[{"type":"document","media":"attach://file_1","parse_mode":"markdown","caption":"'"${ZIP_FILE_CAPTION}"'"},{"type":"document","media":"attach://file_2","parse_mode":"html","caption":"'"${LOG_CAPTION}"'"}]' \
+		-F file_1="@$ZIP_FILE" \
+		-F file_2="@$LOG_FILE"
 }
 
-function do_echo()
-{
-    echo "ECHO"
+function send_fakeradkernel_and_logs() {
+	# cd to project
+	cd /root/project/source
+
+	# Zip file path
+	ZIP_FILE=$(cat path-to-zip.txt)
+
+	# Zip caption file path
+	ZIP_FILE_CAPTION=$(cat path-to-zip-caption.txt)
+
+	# Recorded log file path.
+	LOG_FILE=$(echo build-logs-*.log)
+
+	# Generate MD5 Checksum
+	SHA256=$(sha256sum ${LOG} | cut -d' ' -f1)
+
+	# Scrub appended secrets from file.
+	sed -i s/${TG_BOT_API}/123:xyz/g ${LOG_FILE}
+
+	# Log caption
+	LOG_CAPTION="<b>SHA256 checksum</b> • <code>${SHA256}</code>"
+
+	curl -s \
+		-X POST "https://api.telegram.org/bot"${TG_BOT_API}"/sendMediaGroup" \
+		-F chat_id="${TRIGGERED_CHANNEL}" \
+		-F media='[{"type":"document","media":"attach://file_1","parse_mode":"markdown","caption":"'"${ZIP_FILE_CAPTION}"'"},{"type":"document","media":"attach://file_2","parse_mode":"html","caption":"'"${LOG_CAPTION}"'"}]' \
+		-F file_1="@$ZIP_FILE" \
+		-F file_2="@$LOG_FILE"
 }
 
-$1
+for i in "$@"; do
+	case $i in
+	--rk-logs)
+		send_radkernel_and_logs
+		shift
+		;;
+	--frk-logs)
+		send_fakeradkernel_and_logs
+		shift
+		;;
+	*)
+		# unknown option
+		echo "Unknown option(s)"
+		exit
+		;;
+	esac
+done
